@@ -1,5 +1,5 @@
 # mm2py
-A Python library for reading and modifying MMapper databases
+A Python library for reading and modifying [MMapper](https://github.com/mume/mmapper "MMapper GitHub Page") databases
 
 ## License
 This project is licensed under the terms of the [Unlicense.](https://unlicense.org/UNLICENSE "Unlicense Official Site")
