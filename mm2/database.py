@@ -135,7 +135,8 @@ door_flags = NamedBitFlags([
 	"callable",
 	"knockable",
 	"magic",
-	"action"
+	"action", # Action controlled
+	"no_bash"
 ])
 
 alignment_type = {
