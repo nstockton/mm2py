@@ -37,7 +37,7 @@ MMAPPER_VERSIONS = {
 	32: 237, # MMapper 2.37 schema. (16bit door flags, NoMatch)
 	33: 240, # MMapper 2.40 schema. (16bit exit flags, 32bit mob flags and load flags)
 	34: 243, # MMapper 2.43 schema. (qCompress, SunDeath flag)
-	35: 251 # MMapper 2.51 schema. (discard all previous NoMatch flags)
+	35: 251 # MMapper 2.51 schema. (discard all previous no_match flags)
 }
 
 

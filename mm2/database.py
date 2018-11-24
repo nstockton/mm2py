@@ -73,19 +73,21 @@ class NamedBitFlags(object):
 mob_flags = NamedBitFlags([
 	"rent",
 	"shop",
-	"weaponshop",
-	"armourshop",
-	"foodshop",
-	"petshop",
+	"weapon_shop",
+	"armour_shop",
+	"food_shop",
+	"pet_shop",
 	"guild",
-	"scoutguild",
-	"mageguild",
-	"clericguild",
-	"warriorguild",
-	"rangerguild",
-	"smob", # Aggressive mob.
-	"quest",
-	"any" # Nonaggressive mob.
+	"scout_guild",
+	"mage_guild",
+	"cleric_guild",
+	"warrior_guild",
+	"ranger_guild",
+	"aggressive_mob",
+	"quest_mob",
+	"passive_mob",
+	"elite_mob",
+	"super_mob"
 ])
 
 load_flags = NamedBitFlags([
@@ -98,8 +100,8 @@ load_flags = NamedBitFlags([
 	"key",
 	"mule",
 	"horse",
-	"packhorse",
-	"trainedhorse",
+	"pack_horse",
+	"trained_horse",
 	"rohirrim",
 	"warg",
 	"boat",
@@ -107,7 +109,10 @@ load_flags = NamedBitFlags([
 	"tower", # Player can 'watch' surrounding rooms from this one.
 	"clock",
 	"mail",
-	"stable"
+	"stable",
+	"white_word",
+	"dark_word",
+	"equipment"
 ])
 
 exit_flags = NamedBitFlags([
@@ -127,10 +132,10 @@ exit_flags = NamedBitFlags([
 
 door_flags = NamedBitFlags([
 	"hidden",
-	"needkey",
-	"noblock",
-	"nobreak",
-	"nopick",
+	"need_key",
+	"no_block",
+	"no_break",
+	"no_pick",
 	"delayed",
 	"callable",
 	"knockable",
@@ -192,7 +197,7 @@ terrain_type = {
 	4: "forest",
 	5: "hills",
 	6: "mountains",
-	7: "shallowwater",
+	7: "shallow",
 	8: "water",
 	9: "rapids",
 	10: "underwater",
@@ -200,8 +205,7 @@ terrain_type = {
 	12: "brush",
 	13: "tunnel",
 	14: "cavern",
-	15: "death",
-	16: "random"
+	15: "deathtrap"
 }
 
 
@@ -316,14 +320,14 @@ class Database(object):
 			room.dynamic_desc = qstream.read_string()
 			vnum = qstream.read_uint32()
 			room.note = qstream.read_string()
-			room.terrain = terrain_type.get(qstream.read_uint8(), 0)
-			room.light = light_type.get(qstream.read_uint8(), 0)
-			room.alignment = alignment_type.get(qstream.read_uint8(), 0)
-			room.portable = portable_type.get(qstream.read_uint8(), 0)
+			room.terrain = terrain_type.get(qstream.read_uint8(), terrain_type[0])
+			room.light = light_type.get(qstream.read_uint8(), light_type[0])
+			room.alignment = alignment_type.get(qstream.read_uint8(), alignment_type[0])
+			room.portable = portable_type.get(qstream.read_uint8(), portable_type[0])
 			if version >= 202:
-				room.ridable = ridable_type.get(qstream.read_uint8(), 0)
+				room.ridable = ridable_type.get(qstream.read_uint8(), ridable_type[0])
 			if version >= 240:
-				room.sundeath = sundeath_type.get(qstream.read_uint8(), 0)
+				room.sundeath = sundeath_type.get(qstream.read_uint8(), sundeath_type[0])
 				room.mob_flags.update(mob_flags.bits_to_flags(qstream.read_uint32()))
 				room.load_flags.update(load_flags.bits_to_flags(qstream.read_uint32()))
 			else:
@@ -369,12 +373,12 @@ class Database(object):
 			mark.ms = ms if ms != UINT32_MAX else None
 			tz = qstream.read_uint8() # mark time zone 0 = local time, 1 = UTC
 			mark.time_zone = tz if tz != UINT8_MAX else None
-			mark.type = info_mark_type.get(qstream.read_uint8(), 0)
+			mark.type = info_mark_type.get(qstream.read_uint8(), info_mark_type[0])
 			if version >= 237:
-				mark.cls = info_mark_class.get(qstream.read_uint8(), 0)
-				mark.rotation_angle = qstream.read_uint32()
-			mark.pos1 = (qstream.read_int32(), qstream.read_int32(), qstream.read_int32())
-			mark.pos2 = (qstream.read_int32(), qstream.read_int32(), qstream.read_int32())
+				mark.cls = info_mark_class.get(qstream.read_uint8(), info_mark_class[0])
+				mark.rotation_angle = qstream.read_uint32() / 100.0
+			mark.pos1 = (qstream.read_int32() * 100, qstream.read_int32() * 100, qstream.read_int32())
+			mark.pos2 = (qstream.read_int32() * 100, qstream.read_int32() * 100, qstream.read_int32())
 			self.info_marks.append(mark)
 		# Free up the memory
 		del qstream
