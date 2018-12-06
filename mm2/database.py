@@ -29,6 +29,7 @@
 # For more information, please refer to <http://unlicense.org>
 
 
+from collections import OrderedDict
 import io
 import zlib
 
@@ -37,11 +38,18 @@ from . import MMAPPER_MAGIC, MMAPPER_VERSIONS, MMapperException
 from .qfile import UINT8_MAX, UINT32_MAX, QFile
 
 
-# For Python 3 compatibility.
-try:
-	xrange
-except NameError:
-	xrange = range
+def iter_items(dictionary, **kw):
+	try:
+		return iter(dictionary.iteritems(**kw))
+	except AttributeError:
+		return iter(dictionary.items(**kw))
+
+def iter_range(*args):
+	try:
+		return iter(xrange(*args))
+	except NameError:
+		return iter(range(*args))
+
 
 DIRECTIONS = ("north", "south", "east", "west", "up", "down", "unknown")
 
@@ -148,13 +156,16 @@ alignment_type = {
 	0: "undefined",
 	1: "good",
 	2: "neutral",
-	3: "evil"}
+	3: "evil"
+}
+alignment_type_to_bits = {v:k for k, v in iter_items(alignment_type)}
 
 info_mark_type = {
 	0: "text",
 	1: "line",
 	2: "arrow"
 }
+info_mark_type_to_bits = {v:k for k, v in iter_items(info_mark_type)}
 
 info_mark_class = {
 	0: "generic",
@@ -168,26 +179,35 @@ info_mark_class = {
 	8: "action",
 	9: "locality"
 }
+info_mark_class_to_bits = {v:k for k, v in iter_items(info_mark_class)}
 
 light_type = {
 	0: "undefined",
 	1: "dark",
-	2: "lit"}
+	2: "lit"
+}
+light_type_to_bits = {v:k for k, v in iter_items(light_type)}
 
 portable_type = {
 	0: "undefined",
 	1: "portable",
-	2: "notportable"}
+	2: "notportable"
+}
+portable_type_to_bits = {v:k for k, v in iter_items(portable_type)}
 
 ridable_type = {
 	0: "undefined",
 	1: "ridable",
-	2: "notridable"}
+	2: "notridable"
+}
+ridable_type_to_bits = {v:k for k, v in iter_items(ridable_type)}
 
 sundeath_type = {
 	0: "undefined",
 	1: "sundeath",
-	2: "nosundeath"}
+	2: "nosundeath"
+}
+sundeath_type_to_bits = {v:k for k, v in iter_items(sundeath_type)}
 
 terrain_type = {
 	0: "undefined",
@@ -207,6 +227,7 @@ terrain_type = {
 	14: "cavern",
 	15: "deathtrap"
 }
+terrain_type_to_bits = {v:k for k, v in iter_items(terrain_type)}
 
 
 class Exit(object):
@@ -231,7 +252,7 @@ class InfoMark(object):
 		self.ms = None
 		self.time_zone = None
 		self.cls = "generic"
-		self.rotation_angle = 0.0
+		self.rotation_angle = 0
 		self.pos1 = (0, 0, 0)
 		self.pos2 = (0, 0, 0)
 
@@ -255,7 +276,7 @@ class Room(object):
 		self.x = 0
 		self.y = 0
 		self.z = 0
-		self._exits = {}
+		self._exits = OrderedDict()
 
 	@property
 	def parent(self):
@@ -263,7 +284,7 @@ class Room(object):
 
 	@property
 	def id(self):
-		for vnum, room in self.parent.iteritems():
+		for vnum, room in iter_items(self.parent):
 			if room is self:
 				return vnum
 
@@ -276,7 +297,7 @@ class Database(object):
 	def __init__(self, file_name=None):
 		self.version = VERSION
 		self.selected = (0, 0, 0) # (x, y, z)
-		self.rooms = {}
+		self.rooms = OrderedDict()
 		self.info_marks = []
 		if file_name is not None:
 			self.load(file_name)
@@ -313,7 +334,7 @@ class Database(object):
 		total_rooms = qstream.read_uint32()
 		total_marks = qstream.read_uint32()
 		self.selected = (qstream.read_int32(), qstream.read_int32(), qstream.read_int32()) # (x, y, z)
-		for i in xrange(total_rooms):
+		for i in iter_range(total_rooms):
 			room = Room(parent=self.rooms)
 			room.name = qstream.read_string()
 			room.static_desc = qstream.read_string()
@@ -363,12 +384,12 @@ class Database(object):
 					connection = qstream.read_uint32()
 				room._exits[direction] = ext
 			self.rooms[vnum] = room
-		for i in xrange(total_marks):
+		for i in iter_range(total_marks):
 			mark = InfoMark()
 			mark.name = qstream.read_string()
 			mark.text = qstream.read_string()
 			jd = qstream.read_uint32()
-			mark.julian_day = jd if jd else None # QDate objects don't have a year 0.
+			mark.julian_day = jd if jd != 0 else None # QDate objects don't have a year 0.
 			ms = qstream.read_uint32() # Milliseconds since midnight.
 			mark.ms = ms if ms != UINT32_MAX else None
 			tz = qstream.read_uint8() # mark time zone 0 = local time, 1 = UTC
@@ -376,9 +397,9 @@ class Database(object):
 			mark.type = info_mark_type.get(qstream.read_uint8(), info_mark_type[0])
 			if version >= 237:
 				mark.cls = info_mark_class.get(qstream.read_uint8(), info_mark_class[0])
-				mark.rotation_angle = qstream.read_uint32() / 100.0
-			mark.pos1 = (qstream.read_int32() * 100, qstream.read_int32() * 100, qstream.read_int32())
-			mark.pos2 = (qstream.read_int32() * 100, qstream.read_int32() * 100, qstream.read_int32())
+				mark.rotation_angle = qstream.read_uint32()
+			mark.pos1 = (qstream.read_int32(), qstream.read_int32(), qstream.read_int32())
+			mark.pos2 = (qstream.read_int32(), qstream.read_int32(), qstream.read_int32())
 			self.info_marks.append(mark)
 		# Free up the memory
 		del qstream
@@ -386,3 +407,90 @@ class Database(object):
 		decompressed_stream.truncate()
 		decompressed_stream.close()
 		del decompressed_stream
+
+	def save(self, file_name):
+		uncompressed_stream = io.BytesIO()
+		qstream = QFile(uncompressed_stream)
+		qstream.write_uint32(len(self.rooms))
+		qstream.write_uint32(len(self.info_marks))
+		for coord in self.selected:
+			qstream.write_int32(coord)
+		for vnum, room in iter_items(self.rooms):
+			qstream.write_string(room.name)
+			qstream.write_string(room.static_desc)
+			qstream.write_string(room.dynamic_desc)
+			qstream.write_uint32(vnum)
+			qstream.write_string(room.note)
+			qstream.write_uint8(terrain_type_to_bits[room.terrain])
+			qstream.write_uint8(light_type_to_bits[room.light])
+			qstream.write_uint8(alignment_type_to_bits[room.alignment])
+			qstream.write_uint8(portable_type_to_bits[room.portable])
+			if self.version >= 202:
+				qstream.write_uint8(ridable_type_to_bits[room.ridable])
+			if self.version >= 240:
+				qstream.write_uint8(sundeath_type_to_bits[room.sundeath])
+				qstream.write_uint32(mob_flags.flags_to_bits(room.mob_flags))
+				qstream.write_uint32(load_flags.flags_to_bits(room.load_flags))
+			else:
+				qstream.write_uint16(mob_flags.flags_to_bits(room.mob_flags))
+				qstream.write_uint16(load_flags.flags_to_bits(room.load_flags))
+			qstream.write_uint8(int(room.updated))
+			qstream.write_int32(room.x)
+			qstream.write_int32(room.y)
+			qstream.write_int32(room.z)
+			for direction in DIRECTIONS:
+				ext = room._exits[direction]
+				if self.version >= 240:
+					qstream.write_uint16(exit_flags.flags_to_bits(ext.exit_flags))
+				else:
+					qstream.write_uint8(exit_flags.flags_to_bits(ext.exit_flags))
+				if self.version >= 237:
+					qstream.write_uint16(door_flags.flags_to_bits(ext.door_flags))
+				else:
+					qstream.write_uint8(door_flags.flags_to_bits(ext.door_flags))
+				qstream.write_string(ext.door_name)
+				for connection in ext.inbound_connections:
+					qstream.write_uint32(connection)
+				qstream.write_uint32(UINT32_MAX)
+				for connection in ext.outbound_connections:
+					qstream.write_uint32(connection)
+				qstream.write_uint32(UINT32_MAX)
+		for mark in self.info_marks:
+			qstream.write_string(mark.name)
+			qstream.write_string(mark.text)
+			qstream.write_uint32(mark.julian_day if mark.julian_day is not None else 0)
+			qstream.write_uint32(mark.ms if mark.ms is not None else UINT32_MAX)
+			qstream.write_uint8(mark.time_zone if mark.time_zone is not None else UINT8_MAX)
+			qstream.write_uint8(info_mark_type_to_bits[mark.type])
+			if self.version >= 237:
+				qstream.write_uint8(info_mark_class_to_bits[mark.cls])
+				qstream.write_uint32(mark.rotation_angle)
+			for coord in mark.pos1:
+				qstream.write_int32(coord)
+			for coord in mark.pos2:
+				qstream.write_int32(coord)
+		del qstream
+		with open(file_name, "wb") as output_stream:
+			qstream = QFile(output_stream)
+			qstream.write_uint32(MMAPPER_MAGIC)
+			for version_int, version in iter_items(MMAPPER_VERSIONS):
+				if version == self.version:
+					qstream.write_int32(version_int)
+					break
+			else:
+				raise UnsupportedVersionException(version)
+			if self.version >= 243:
+				qstream.write_uint32(uncompressed_stream.tell())
+			uncompressed_stream.seek(0)
+			block_size = 8192
+			compressor = zlib.compressobj()
+			data = uncompressed_stream.read(block_size)
+			while data:
+				output_stream.write(compressor.compress(data))
+				data = uncompressed_stream.read(block_size)
+			output_stream.write(compressor.flush())
+			del qstream
+		uncompressed_stream.seek(0)
+		uncompressed_stream.truncate()
+		uncompressed_stream.close()
+		del uncompressed_stream

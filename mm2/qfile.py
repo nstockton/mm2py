@@ -111,7 +111,8 @@ class QFile(object):
 
 	def write_string(self, data):
 		if data:
+			data = data.encode("UTF_16_BE")
 			self.write_uint32(len(data))
-			self._stream.write(data.encode("UTF_16_BE"))
+			self._stream.write(data)
 		else:
 			self.write_uint32(UINT32_MAX)
