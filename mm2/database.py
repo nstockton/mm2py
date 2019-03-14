@@ -120,7 +120,8 @@ load_flags = NamedBitFlags([
 	"stable",
 	"white_word",
 	"dark_word",
-	"equipment"
+	"equipment",
+	"coach"
 ])
 
 exit_flags = NamedBitFlags([
