@@ -39,7 +39,7 @@ set(['exit'])
 >>> db.rooms[0].exits["east"].parent.name # The parent property points to the room that this exit belongs to.
 u"Vig's Shop"
 >>> # Lets try something more complicated. Make a list of room objects, sorted by room ID, which contain exits with one or more of the noblock, nobreak, or nopick door flags set.
->>> results = sorted((room for vnum, room in db.rooms.items() for direction, ext in room.exits.items() if ext.door_flags & {"noblock", "nobreak", "nopick"}), key=lambda room: room.id)
+>>> results = sorted((room for vnum, room in db.rooms.items() for direction, ext in room.exits.items() if ext.door_flags & {"no_block", "no_break", "no_pick"}), key=lambda room: room.id)
 >>> len(results) # How many results?
 88
 >>> results[0].name # Get the room name of the first result.
