@@ -11,7 +11,7 @@
 # means.
 
 # In jurisdictions that recognize copyright laws, the author or authors
-#of this software dedicate any and all copyright interest in the
+# of this software dedicate any and all copyright interest in the
 # software to the public domain. We make this dedication for the benefit
 # of the public at large and to the detriment of our heirs and
 # successors. We intend this dedication to be an overt act of
@@ -23,25 +23,19 @@
 # MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
 # IN NO EVENT SHALL THE AUTHORS BE LIABLE FOR ANY CLAIM, DAMAGES OR
 # OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
-#ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+# ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 # OTHER DEALINGS IN THE SOFTWARE.
 
 # For more information, please refer to <http://unlicense.org>
 
 
-from __future__ import print_function
-import sys
-
-if sys.version_info <= (2, 7):
-	error = "Requires Python Version 2.7 or above... exiting."
-	print(error, file=sys.stderr)
-	sys.exit(1)
-
 from setuptools import setup, find_packages
 
 from mm2 import __version__ as VERSION
 
+
 requirements = []
+
 
 setup(
 	name="mm2py",

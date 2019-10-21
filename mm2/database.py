@@ -11,7 +11,7 @@
 # means.
 
 # In jurisdictions that recognize copyright laws, the author or authors
-#of this software dedicate any and all copyright interest in the
+# of this software dedicate any and all copyright interest in the
 # software to the public domain. We make this dedication for the benefit
 # of the public at large and to the detriment of our heirs and
 # successors. We intend this dedication to be an overt act of
@@ -23,7 +23,7 @@
 # MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
 # IN NO EVENT SHALL THE AUTHORS BE LIABLE FOR ANY CLAIM, DAMAGES OR
 # OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
-#ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+# ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 # OTHER DEALINGS IN THE SOFTWARE.
 
 # For more information, please refer to <http://unlicense.org>
@@ -36,19 +36,6 @@ import zlib
 from . import __version__ as VERSION
 from . import MMAPPER_MAGIC, MMAPPER_VERSIONS, MMapperException
 from .qfile import UINT8_MAX, UINT32_MAX, QFile
-
-
-def iter_items(dictionary, **kw):
-	try:
-		return iter(dictionary.iteritems(**kw))
-	except AttributeError:
-		return iter(dictionary.items(**kw))
-
-def iter_range(*args):
-	try:
-		return iter(xrange(*args))
-	except NameError:
-		return iter(range(*args))
 
 
 DIRECTIONS = ("north", "south", "east", "west", "up", "down", "unknown")
@@ -114,7 +101,7 @@ load_flags = NamedBitFlags([
 	"warg",
 	"boat",
 	"attention",
-	"tower", # Player can 'watch' surrounding rooms from this one.
+	"tower",  # Player can 'watch' surrounding rooms from this one.
 	"clock",
 	"mail",
 	"stable",
@@ -150,7 +137,7 @@ door_flags = NamedBitFlags([
 	"callable",
 	"knockable",
 	"magic",
-	"action", # Action controlled
+	"action",  # Action controlled
 	"no_bash"
 ])
 
@@ -160,14 +147,14 @@ alignment_type = {
 	2: "neutral",
 	3: "evil"
 }
-alignment_type_to_bits = {v:k for k, v in iter_items(alignment_type)}
+alignment_type_to_bits = {v: k for k, v in alignment_type.items()}
 
 info_mark_type = {
 	0: "text",
 	1: "line",
 	2: "arrow"
 }
-info_mark_type_to_bits = {v:k for k, v in iter_items(info_mark_type)}
+info_mark_type_to_bits = {v: k for k, v in info_mark_type.items()}
 
 info_mark_class = {
 	0: "generic",
@@ -181,35 +168,35 @@ info_mark_class = {
 	8: "action",
 	9: "locality"
 }
-info_mark_class_to_bits = {v:k for k, v in iter_items(info_mark_class)}
+info_mark_class_to_bits = {v: k for k, v in info_mark_class.items()}
 
 light_type = {
 	0: "undefined",
 	1: "dark",
 	2: "lit"
 }
-light_type_to_bits = {v:k for k, v in iter_items(light_type)}
+light_type_to_bits = {v: k for k, v in light_type.items()}
 
 portable_type = {
 	0: "undefined",
 	1: "portable",
 	2: "notportable"
 }
-portable_type_to_bits = {v:k for k, v in iter_items(portable_type)}
+portable_type_to_bits = {v: k for k, v in portable_type.items()}
 
 ridable_type = {
 	0: "undefined",
 	1: "ridable",
 	2: "notridable"
 }
-ridable_type_to_bits = {v:k for k, v in iter_items(ridable_type)}
+ridable_type_to_bits = {v: k for k, v in ridable_type.items()}
 
 sundeath_type = {
 	0: "undefined",
 	1: "sundeath",
 	2: "nosundeath"
 }
-sundeath_type_to_bits = {v:k for k, v in iter_items(sundeath_type)}
+sundeath_type_to_bits = {v: k for k, v in sundeath_type.items()}
 
 terrain_type = {
 	0: "undefined",
@@ -229,7 +216,7 @@ terrain_type = {
 	14: "cavern",
 	15: "deathtrap"
 }
-terrain_type_to_bits = {v:k for k, v in iter_items(terrain_type)}
+terrain_type_to_bits = {v: k for k, v in terrain_type.items()}
 
 
 class Exit(object):
@@ -286,19 +273,22 @@ class Room(object):
 
 	@property
 	def id(self):
-		for vnum, room in iter_items(self.parent):
+		for vnum, room in self.parent.items():
 			if room is self:
 				return vnum
 
 	@property
 	def exits(self):
-		return {direction: self._exits[direction] for direction in self._exits if self._exits and self._exits[direction].exit_flags}
+		return {
+			direction: self._exits[direction]
+			for direction in self._exits if self._exits and self._exits[direction].exit_flags
+		}
 
 
 class Database(object):
 	def __init__(self, file_name=None):
 		self.version = VERSION
-		self.selected = (0, 0, 0) # (x, y, z)
+		self.selected = (0, 0, 0)  # (x, y, z)
 		self.rooms = OrderedDict()
 		self.info_marks = []
 		if file_name is not None:
@@ -318,12 +308,18 @@ class Database(object):
 				version = MMAPPER_VERSIONS[version]
 			self.version = version
 			if version >= 243:
-				# As of MMapper V2.43, MMapper uses qCompress and qUncompress from the QByteArray class for data compression.
+				# As of MMapper V2.43, MMapper uses qCompress and qUncompress
+				# from the QByteArray class for data compression.
 				# From the web page at
 				# https://doc.qt.io/archives/qt-5.7/qbytearray.html#qUncompress
-				# "Note: If you want to use this function to uncompress external data that was compressed using zlib, you first need to prepend a four byte header to the byte array containing the data. The header must contain the expected length (in bytes) of the uncompressed data, expressed as an unsigned, big-endian, 32-bit integer."
-				# We can therefore assume that MMapper data files stored by V2.43 or later are compressed using standard zlib with a non-standard 4-byte header.
-				header = qstream.read_uint32()
+				# "Note: If you want to use this function to uncompress external data
+				# that was compressed using zlib, you first need to prepend a four byte header
+				# to the byte array containing the data. The header must contain
+				# the expected length (in bytes) of the uncompressed data, expressed as
+				# an unsigned, big-endian, 32-bit integer."
+				# We can therefore assume that MMapper data files stored by V2.43
+				# or later are compressed using standard zlib with a non-standard 4-byte header.
+				qstream.read_uint32()  # We don't need the header.
 			block_size = 8192
 			decompressor = zlib.decompressobj()
 			data = compressed_stream.read(block_size)
@@ -335,8 +331,8 @@ class Database(object):
 		qstream = QFile(decompressed_stream)
 		total_rooms = qstream.read_uint32()
 		total_marks = qstream.read_uint32()
-		self.selected = (qstream.read_int32(), qstream.read_int32(), qstream.read_int32()) # (x, y, z)
-		for i in iter_range(total_rooms):
+		self.selected = (qstream.read_int32(), qstream.read_int32(), qstream.read_int32())  # (x, y, z)
+		for i in range(total_rooms):
 			room = Room(parent=self.rooms)
 			room.name = qstream.read_string()
 			room.static_desc = qstream.read_string()
@@ -361,7 +357,7 @@ class Database(object):
 			room.y = qstream.read_int32()
 			room.z = qstream.read_int32()
 			for direction in DIRECTIONS:
-				ext = Exit(parent=room) # 'exit' is a built in function in Python. Use 'ext' instead.
+				ext = Exit(parent=room)  # 'exit' is a built in function in Python. Use 'ext' instead.
 				if version >= 240:
 					ext.exit_flags.update(exit_flags.bits_to_flags(qstream.read_uint16()))
 				else:
@@ -386,15 +382,15 @@ class Database(object):
 					connection = qstream.read_uint32()
 				room._exits[direction] = ext
 			self.rooms[vnum] = room
-		for i in iter_range(total_marks):
+		for i in range(total_marks):
 			mark = InfoMark()
 			mark.name = qstream.read_string()
 			mark.text = qstream.read_string()
 			jd = qstream.read_uint32()
-			mark.julian_day = jd if jd != 0 else None # QDate objects don't have a year 0.
-			ms = qstream.read_uint32() # Milliseconds since midnight.
+			mark.julian_day = jd if jd != 0 else None  # QDate objects don't have a year 0.
+			ms = qstream.read_uint32()  # Milliseconds since midnight.
 			mark.ms = ms if ms != UINT32_MAX else None
-			tz = qstream.read_uint8() # mark time zone 0 = local time, 1 = UTC
+			tz = qstream.read_uint8()  # mark time zone 0 = local time, 1 = UTC
 			mark.time_zone = tz if tz != UINT8_MAX else None
 			mark.type = info_mark_type.get(qstream.read_uint8(), info_mark_type[0])
 			if version >= 237:
@@ -417,7 +413,7 @@ class Database(object):
 		qstream.write_uint32(len(self.info_marks))
 		for coord in self.selected:
 			qstream.write_int32(coord)
-		for vnum, room in iter_items(self.rooms):
+		for vnum, room in self.rooms.items():
 			qstream.write_string(room.name)
 			qstream.write_string(room.static_desc)
 			qstream.write_string(room.dynamic_desc)
@@ -475,7 +471,7 @@ class Database(object):
 		with open(file_name, "wb") as output_stream:
 			qstream = QFile(output_stream)
 			qstream.write_uint32(MMAPPER_MAGIC)
-			for version_int, version in iter_items(MMAPPER_VERSIONS):
+			for version_int, version in MMAPPER_VERSIONS.items():
 				if version == self.version:
 					qstream.write_int32(version_int)
 					break
