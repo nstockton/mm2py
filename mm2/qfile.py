@@ -33,6 +33,7 @@ import struct
 
 from . import MMapperException
 
+
 UINT8_MAX = 0xff
 UINT16_MAX = 0xffff
 UINT32_MAX = 0xffffffff

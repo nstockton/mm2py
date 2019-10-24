@@ -30,15 +30,52 @@
 
 
 from collections import OrderedDict
+from decimal import Decimal, ROUND_HALF_UP
 import io
 import zlib
 
-from . import __version__ as VERSION
 from . import MMAPPER_MAGIC, MMAPPER_VERSIONS, MMapperException
-from .qfile import UINT8_MAX, UINT32_MAX, QFile
+from .coordinates import Coordinates
+from .info_marks import (
+	INFO_MARK_SCALE,
+	INFO_MARK_HALF_ROOM_OFFSET,
+	INFO_MARK_OFFSET1,
+	INFO_MARK_OFFSET2,
+	INFO_MARK_TEXT_OFFSET,
+	INFO_MARK_TYPE,
+	INFO_MARK_TYPE_TO_BITS,
+	INFO_MARK_CLASS,
+	INFO_MARK_CLASS_TO_BITS,
+	InfoMark
+)
+from .rooms import (
+	MOB_FLAGS,
+	LOAD_FLAGS,
+	EXIT_FLAGS,
+	DOOR_FLAGS,
+	ALIGNMENT_TYPE,
+	ALIGNMENT_TYPE_TO_BITS,
+	LIGHT_TYPE,
+	LIGHT_TYPE_TO_BITS,
+	PORTABLE_TYPE,
+	PORTABLE_TYPE_TO_BITS,
+	RIDABLE_TYPE,
+	RIDABLE_TYPE_TO_BITS,
+	SUN_DEATH_TYPE,
+	SUN_DEATH_TYPE_TO_BITS,
+	TERRAIN_TYPE,
+	TERRAIN_TYPE_TO_BITS,
+	Exit,
+	Room
+)
+from .qfile import UINT32_MAX, QFile
 
 
 DIRECTIONS = ("north", "south", "east", "west", "up", "down", "unknown")
+
+
+def lround(value):
+	return int(Decimal(str(value)).quantize(Decimal(0), rounding=ROUND_HALF_UP))
 
 
 class BadMagicNumberException(MMapperException):
@@ -50,245 +87,9 @@ class UnsupportedVersionException(MMapperException):
 		MMapperException.__init__(self, "Do not support version 0{:o} of MMapper data".format(version))
 
 
-class NamedBitFlags(object):
-	def __init__(self, flags):
-		self.map_by_name = {}
-		self.map_by_number = {}
-		for bit, name in enumerate(flags, 1):
-			self.map_by_number[1 << (bit - 1)] = name
-			self.map_by_name[name] = 1 << (bit - 1)
-
-	def bits_to_flags(self, bits):
-		return {self.map_by_number[num] for num in self.map_by_number if bits & num}
-
-	def flags_to_bits(self, flags):
-		return sum(self.map_by_name[flag] for flag in flags if flag in self.map_by_name)
-
-
-mob_flags = NamedBitFlags([
-	"rent",
-	"shop",
-	"weapon_shop",
-	"armour_shop",
-	"food_shop",
-	"pet_shop",
-	"guild",
-	"scout_guild",
-	"mage_guild",
-	"cleric_guild",
-	"warrior_guild",
-	"ranger_guild",
-	"aggressive_mob",
-	"quest_mob",
-	"passive_mob",
-	"elite_mob",
-	"super_mob"
-])
-
-load_flags = NamedBitFlags([
-	"treasure",
-	"armour",
-	"weapon",
-	"water",
-	"food",
-	"herb",
-	"key",
-	"mule",
-	"horse",
-	"pack_horse",
-	"trained_horse",
-	"rohirrim",
-	"warg",
-	"boat",
-	"attention",
-	"tower",  # Player can 'watch' surrounding rooms from this one.
-	"clock",
-	"mail",
-	"stable",
-	"white_word",
-	"dark_word",
-	"equipment",
-	"coach",
-	"ferry"
-])
-
-exit_flags = NamedBitFlags([
-	"exit",
-	"door",
-	"road",
-	"climb",
-	"random",
-	"special",
-	"no_match",
-	"flow",
-	"no_flee",
-	"damage",
-	"fall",
-	"guarded"
-])
-
-door_flags = NamedBitFlags([
-	"hidden",
-	"need_key",
-	"no_block",
-	"no_break",
-	"no_pick",
-	"delayed",
-	"callable",
-	"knockable",
-	"magic",
-	"action",  # Action controlled
-	"no_bash"
-])
-
-alignment_type = {
-	0: "undefined",
-	1: "good",
-	2: "neutral",
-	3: "evil"
-}
-alignment_type_to_bits = {v: k for k, v in alignment_type.items()}
-
-info_mark_type = {
-	0: "text",
-	1: "line",
-	2: "arrow"
-}
-info_mark_type_to_bits = {v: k for k, v in info_mark_type.items()}
-
-info_mark_class = {
-	0: "generic",
-	1: "herb",
-	2: "river",
-	3: "place",
-	4: "mob",
-	5: "comment",
-	6: "road",
-	7: "object",
-	8: "action",
-	9: "locality"
-}
-info_mark_class_to_bits = {v: k for k, v in info_mark_class.items()}
-
-light_type = {
-	0: "undefined",
-	1: "dark",
-	2: "lit"
-}
-light_type_to_bits = {v: k for k, v in light_type.items()}
-
-portable_type = {
-	0: "undefined",
-	1: "portable",
-	2: "notportable"
-}
-portable_type_to_bits = {v: k for k, v in portable_type.items()}
-
-ridable_type = {
-	0: "undefined",
-	1: "ridable",
-	2: "notridable"
-}
-ridable_type_to_bits = {v: k for k, v in ridable_type.items()}
-
-sundeath_type = {
-	0: "undefined",
-	1: "sundeath",
-	2: "nosundeath"
-}
-sundeath_type_to_bits = {v: k for k, v in sundeath_type.items()}
-
-terrain_type = {
-	0: "undefined",
-	1: "indoors",
-	2: "city",
-	3: "field",
-	4: "forest",
-	5: "hills",
-	6: "mountains",
-	7: "shallow",
-	8: "water",
-	9: "rapids",
-	10: "underwater",
-	11: "road",
-	12: "brush",
-	13: "tunnel",
-	14: "cavern",
-	15: "deathtrap"
-}
-terrain_type_to_bits = {v: k for k, v in terrain_type.items()}
-
-
-class Exit(object):
-	def __init__(self, parent):
-		self._parent = parent
-		self.exit_flags = set()
-		self.door_flags = set()
-		self.door_name = ""
-		self.inbound_connections = []
-		self.outbound_connections = []
-
-	@property
-	def parent(self):
-		return self._parent
-
-
-class InfoMark(object):
-	def __init__(self):
-		self.name = ""
-		self.type = "text"
-		self.julian_day = None
-		self.ms = None
-		self.time_zone = None
-		self.cls = "generic"
-		self.rotation_angle = 0
-		self.pos1 = (0, 0, 0)
-		self.pos2 = (0, 0, 0)
-
-
-class Room(object):
-	def __init__(self, parent):
-		self._parent = parent
-		self.name = ""
-		self.static_desc = ""
-		self.dynamic_desc = ""
-		self.note = ""
-		self.terrain = terrain_type[0]
-		self.light = light_type[0]
-		self.alignment = alignment_type[0]
-		self.portable = portable_type[0]
-		self.ridable = ridable_type[0]
-		self.sundeath = sundeath_type[0]
-		self.mob_flags = set()
-		self.load_flags = set()
-		self.updated = False
-		self.x = 0
-		self.y = 0
-		self.z = 0
-		self._exits = OrderedDict()
-
-	@property
-	def parent(self):
-		return self._parent
-
-	@property
-	def id(self):
-		for vnum, room in self.parent.items():
-			if room is self:
-				return vnum
-
-	@property
-	def exits(self):
-		return {
-			direction: self._exits[direction]
-			for direction in self._exits if self._exits and self._exits[direction].exit_flags
-		}
-
-
 class Database(object):
 	def __init__(self, file_name=None):
-		self.version = VERSION
-		self.selected = (0, 0, 0)  # (x, y, z)
+		self.selected = Coordinates()
 		self.rooms = OrderedDict()
 		self.info_marks = []
 		if file_name is not None:
@@ -306,7 +107,6 @@ class Database(object):
 				raise UnsupportedVersionException(version)
 			else:
 				version = MMAPPER_VERSIONS[version]
-			self.version = version
 			if version >= 243:
 				# As of MMapper V2.43, MMapper uses qCompress and qUncompress
 				# from the QByteArray class for data compression.
@@ -331,7 +131,10 @@ class Database(object):
 		qstream = QFile(decompressed_stream)
 		total_rooms = qstream.read_uint32()
 		total_marks = qstream.read_uint32()
-		self.selected = (qstream.read_int32(), qstream.read_int32(), qstream.read_int32())  # (x, y, z)
+		self.selected += (qstream.read_int32(), qstream.read_int32(), qstream.read_int32())  # (x, y, z)
+		if version <= 251:
+			# In version 251 and below, moving north would decrement the y coordinate.
+			self.selected.y = -self.selected.y
 		for i in range(total_rooms):
 			room = Room(parent=self.rooms)
 			room.name = qstream.read_string()
@@ -339,38 +142,39 @@ class Database(object):
 			room.dynamic_desc = qstream.read_string()
 			vnum = qstream.read_uint32()
 			room.note = qstream.read_string()
-			room.terrain = terrain_type.get(qstream.read_uint8(), terrain_type[0])
-			room.light = light_type.get(qstream.read_uint8(), light_type[0])
-			room.alignment = alignment_type.get(qstream.read_uint8(), alignment_type[0])
-			room.portable = portable_type.get(qstream.read_uint8(), portable_type[0])
+			room.terrain = TERRAIN_TYPE.get(qstream.read_uint8(), TERRAIN_TYPE[0])
+			room.light = LIGHT_TYPE.get(qstream.read_uint8(), LIGHT_TYPE[0])
+			room.alignment = ALIGNMENT_TYPE.get(qstream.read_uint8(), ALIGNMENT_TYPE[0])
+			room.portable = PORTABLE_TYPE.get(qstream.read_uint8(), PORTABLE_TYPE[0])
 			if version >= 202:
-				room.ridable = ridable_type.get(qstream.read_uint8(), ridable_type[0])
+				room.ridable = RIDABLE_TYPE.get(qstream.read_uint8(), RIDABLE_TYPE[0])
 			if version >= 240:
-				room.sundeath = sundeath_type.get(qstream.read_uint8(), sundeath_type[0])
-				room.mob_flags.update(mob_flags.bits_to_flags(qstream.read_uint32()))
-				room.load_flags.update(load_flags.bits_to_flags(qstream.read_uint32()))
+				room.sundeath = SUN_DEATH_TYPE.get(qstream.read_uint8(), SUN_DEATH_TYPE[0])
+				room.mob_flags.update(MOB_FLAGS.bits_to_flags(qstream.read_uint32()))
+				room.load_flags.update(LOAD_FLAGS.bits_to_flags(qstream.read_uint32()))
 			else:
-				room.mob_flags.update(mob_flags.bits_to_flags(qstream.read_uint16()))
-				room.load_flags.update(load_flags.bits_to_flags(qstream.read_uint16()))
+				room.mob_flags.update(MOB_FLAGS.bits_to_flags(qstream.read_uint16()))
+				room.load_flags.update(LOAD_FLAGS.bits_to_flags(qstream.read_uint16()))
 			room.updated = bool(qstream.read_uint8())
-			room.x = qstream.read_int32()
-			room.y = qstream.read_int32()
-			room.z = qstream.read_int32()
+			room.coordinates += (qstream.read_int32(), qstream.read_int32(), qstream.read_int32())
+			if version <= 251:
+				# In version 251 and below, moving north would decrement the y coordinate.
+				room.y = -room.y
 			for direction in DIRECTIONS:
 				ext = Exit(parent=room)  # 'exit' is a built in function in Python. Use 'ext' instead.
 				if version >= 240:
-					ext.exit_flags.update(exit_flags.bits_to_flags(qstream.read_uint16()))
+					ext.exit_flags.update(EXIT_FLAGS.bits_to_flags(qstream.read_uint16()))
 				else:
-					ext.exit_flags.update(exit_flags.bits_to_flags(qstream.read_uint8()))
+					ext.exit_flags.update(EXIT_FLAGS.bits_to_flags(qstream.read_uint8()))
 					if "door" in ext.exit_flags:
 						ext.exit_flags.add("exit")
 				# Exits saved after MMapper V2.04 were offset by 1 bit causing corruption and excessive NO_MATCH exits.
 				if version >= 204 and version < 251 and "no_match" in ext.exit_flags:
 					ext.exit_flags.remove("no_match")
 				if version >= 237:
-					ext.door_flags.update(door_flags.bits_to_flags(qstream.read_uint16()))
+					ext.door_flags.update(DOOR_FLAGS.bits_to_flags(qstream.read_uint16()))
 				else:
-					ext.door_flags.update(door_flags.bits_to_flags(qstream.read_uint8()))
+					ext.door_flags.update(DOOR_FLAGS.bits_to_flags(qstream.read_uint8()))
 				ext.door_name = qstream.read_string()
 				connection = qstream.read_uint32()
 				while connection != UINT32_MAX:
@@ -384,20 +188,40 @@ class Database(object):
 			self.rooms[vnum] = room
 		for i in range(total_marks):
 			mark = InfoMark()
-			mark.name = qstream.read_string()
+			if version <= 251:
+				# Value ignored; called for side effect.
+				qstream.read_string()  # Mark name.
 			mark.text = qstream.read_string()
-			jd = qstream.read_uint32()
-			mark.julian_day = jd if jd != 0 else None  # QDate objects don't have a year 0.
-			ms = qstream.read_uint32()  # Milliseconds since midnight.
-			mark.ms = ms if ms != UINT32_MAX else None
-			tz = qstream.read_uint8()  # mark time zone 0 = local time, 1 = UTC
-			mark.time_zone = tz if tz != UINT8_MAX else None
-			mark.type = info_mark_type.get(qstream.read_uint8(), info_mark_type[0])
+			if version <= 251:
+				# Value ignored; called for side effect.
+				qstream.read_uint32()  # Julian day.
+				qstream.read_uint32()  # Milliseconds since midnight.
+				qstream.read_uint8()  # Time zone (0 = local time, 1 = UTC).
+			mark.type = INFO_MARK_TYPE.get(qstream.read_uint8(), INFO_MARK_TYPE[0])
 			if version >= 237:
-				mark.cls = info_mark_class.get(qstream.read_uint8(), info_mark_class[0])
-				mark.rotation_angle = qstream.read_uint32()
-			mark.pos1 = (qstream.read_int32(), qstream.read_int32(), qstream.read_int32())
-			mark.pos2 = (qstream.read_int32(), qstream.read_int32(), qstream.read_int32())
+				mark.cls = INFO_MARK_CLASS.get(qstream.read_uint8(), INFO_MARK_CLASS[0])
+				mark.rotation_angle = qstream.read_int32()
+				if version < 260:
+					mark.rotation_angle /= INFO_MARK_SCALE
+			mark.pos1 += (qstream.read_int32(), qstream.read_int32(), qstream.read_int32())
+			mark.pos2 += (qstream.read_int32(), qstream.read_int32(), qstream.read_int32())
+			if version <= 251:
+				mark.pos1 += INFO_MARK_HALF_ROOM_OFFSET
+				mark.pos2 += INFO_MARK_HALF_ROOM_OFFSET
+				if mark.type == "text":
+					mark.pos1 += INFO_MARK_TEXT_OFFSET
+					mark.pos2 += INFO_MARK_TEXT_OFFSET
+				elif mark.type == "arrow":
+					mark.pos1 += INFO_MARK_OFFSET1
+					mark.pos2 += INFO_MARK_OFFSET2
+				mark.rotation_angle = -mark.rotation_angle
+				# In version 251 and below, moving north would decrement the y coordinate.
+				mark.pos1.y = -mark.pos1.y
+				mark.pos2.y = -mark.pos2.y
+			if mark.type != "text" and mark.text:
+				mark.text = ""
+			elif mark.type == "text" and not mark.text:
+				mark.text = "New Marker"
 			self.info_marks.append(mark)
 		# Free up the memory
 		del qstream
@@ -419,33 +243,21 @@ class Database(object):
 			qstream.write_string(room.dynamic_desc)
 			qstream.write_uint32(vnum)
 			qstream.write_string(room.note)
-			qstream.write_uint8(terrain_type_to_bits[room.terrain])
-			qstream.write_uint8(light_type_to_bits[room.light])
-			qstream.write_uint8(alignment_type_to_bits[room.alignment])
-			qstream.write_uint8(portable_type_to_bits[room.portable])
-			if self.version >= 202:
-				qstream.write_uint8(ridable_type_to_bits[room.ridable])
-			if self.version >= 240:
-				qstream.write_uint8(sundeath_type_to_bits[room.sundeath])
-				qstream.write_uint32(mob_flags.flags_to_bits(room.mob_flags))
-				qstream.write_uint32(load_flags.flags_to_bits(room.load_flags))
-			else:
-				qstream.write_uint16(mob_flags.flags_to_bits(room.mob_flags))
-				qstream.write_uint16(load_flags.flags_to_bits(room.load_flags))
+			qstream.write_uint8(TERRAIN_TYPE_TO_BITS[room.terrain])
+			qstream.write_uint8(LIGHT_TYPE_TO_BITS[room.light])
+			qstream.write_uint8(ALIGNMENT_TYPE_TO_BITS[room.alignment])
+			qstream.write_uint8(PORTABLE_TYPE_TO_BITS[room.portable])
+			qstream.write_uint8(RIDABLE_TYPE_TO_BITS[room.ridable])
+			qstream.write_uint8(SUN_DEATH_TYPE_TO_BITS[room.sundeath])
+			qstream.write_uint32(MOB_FLAGS.flags_to_bits(room.mob_flags))
+			qstream.write_uint32(LOAD_FLAGS.flags_to_bits(room.load_flags))
 			qstream.write_uint8(int(room.updated))
-			qstream.write_int32(room.x)
-			qstream.write_int32(room.y)
-			qstream.write_int32(room.z)
+			for coord in room.coordinates:
+				qstream.write_int32(coord)
 			for direction in DIRECTIONS:
 				ext = room._exits[direction]
-				if self.version >= 240:
-					qstream.write_uint16(exit_flags.flags_to_bits(ext.exit_flags))
-				else:
-					qstream.write_uint8(exit_flags.flags_to_bits(ext.exit_flags))
-				if self.version >= 237:
-					qstream.write_uint16(door_flags.flags_to_bits(ext.door_flags))
-				else:
-					qstream.write_uint8(door_flags.flags_to_bits(ext.door_flags))
+				qstream.write_uint16(EXIT_FLAGS.flags_to_bits(ext.exit_flags))
+				qstream.write_uint16(DOOR_FLAGS.flags_to_bits(ext.door_flags))
 				qstream.write_string(ext.door_name)
 				for connection in ext.inbound_connections:
 					qstream.write_uint32(connection)
@@ -454,15 +266,10 @@ class Database(object):
 					qstream.write_uint32(connection)
 				qstream.write_uint32(UINT32_MAX)
 		for mark in self.info_marks:
-			qstream.write_string(mark.name)
 			qstream.write_string(mark.text)
-			qstream.write_uint32(mark.julian_day if mark.julian_day is not None else 0)
-			qstream.write_uint32(mark.ms if mark.ms is not None else UINT32_MAX)
-			qstream.write_uint8(mark.time_zone if mark.time_zone is not None else UINT8_MAX)
-			qstream.write_uint8(info_mark_type_to_bits[mark.type])
-			if self.version >= 237:
-				qstream.write_uint8(info_mark_class_to_bits[mark.cls])
-				qstream.write_uint32(mark.rotation_angle)
+			qstream.write_uint8(INFO_MARK_TYPE_TO_BITS[mark.type])
+			qstream.write_uint8(INFO_MARK_CLASS_TO_BITS[mark.cls])
+			qstream.write_int32(lround(mark.rotation_angle))
 			for coord in mark.pos1:
 				qstream.write_int32(coord)
 			for coord in mark.pos2:
@@ -471,14 +278,8 @@ class Database(object):
 		with open(file_name, "wb") as output_stream:
 			qstream = QFile(output_stream)
 			qstream.write_uint32(MMAPPER_MAGIC)
-			for version_int, version in MMAPPER_VERSIONS.items():
-				if version == self.version:
-					qstream.write_int32(version_int)
-					break
-			else:
-				raise UnsupportedVersionException(version)
-			if self.version >= 243:
-				qstream.write_uint32(uncompressed_stream.tell())
+			qstream.write_int32(max(MMAPPER_VERSIONS))
+			qstream.write_uint32(uncompressed_stream.tell())
 			uncompressed_stream.seek(0)
 			block_size = 8192
 			compressor = zlib.compressobj()

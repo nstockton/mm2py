@@ -1,4 +1,4 @@
-﻿# -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 
 # Original module written by Chris Brannon (https://github.com/CMB).
 # Maintained by Nick Stockton (https://github.com/nstockton).
@@ -29,36 +29,46 @@
 # For more information, please refer to <http://unlicense.org>
 
 
-MMAPPER_MAGIC = 0xffb2af01
-MMAPPER_VERSIONS = {
-	17: 200,  # MMapper 2.00 schema. (Initial supported version)
-	24: 202,  # MMapper 2.02 schema. (Ridable flag)
-	25: 204,  # MMapper 2.04 schema. (ZLib compression)
-	32: 237,  # MMapper 2.37 schema. (16bit door flags, NoMatch)
-	33: 240,  # MMapper 2.40 schema. (16bit exit flags, 32bit mob flags and load flags)
-	34: 243,  # MMapper 2.43 schema. (qCompress, SunDeath flag)
-	35: 251,  # MMapper 2.51 schema. (discard all previous no_match flags)
-	36: 260  # (switches to new coordinate system)
+from .coordinates import Coordinates
+
+
+INFO_MARK_SCALE = 100
+INFO_MARK_TWENTIETH = INFO_MARK_SCALE / 20
+INFO_MARK_TENTH = INFO_MARK_SCALE / 10
+INFO_MARK_HALF = INFO_MARK_SCALE / 2
+INFO_MARK_HALF_ROOM_OFFSET = Coordinates(INFO_MARK_HALF, -INFO_MARK_HALF, 0)  # Note: Y inverted.
+INFO_MARK_OFFSET1 = Coordinates(0, INFO_MARK_TWENTIETH, 0)
+INFO_MARK_OFFSET2 = Coordinates(INFO_MARK_TENTH, INFO_MARK_TENTH, 0)
+INFO_MARK_TEXT_OFFSET = Coordinates(INFO_MARK_TENTH, 3 * INFO_MARK_TENTH, 0)
+
+
+INFO_MARK_TYPE = {
+	0: "text",
+	1: "line",
+	2: "arrow"
 }
+INFO_MARK_TYPE_TO_BITS = {v: k for k, v in INFO_MARK_TYPE.items()}
 
-__all__ = ["coordinates", "database", "info_marks", "rooms", "qfile"]
-__version__ = sorted(MMAPPER_VERSIONS.values())[-1]
-
-
-class NamedBitFlags(object):
-	def __init__(self, flags):
-		self.map_by_name = {}
-		self.map_by_number = {}
-		for bit, name in enumerate(flags, 1):
-			self.map_by_number[1 << (bit - 1)] = name
-			self.map_by_name[name] = 1 << (bit - 1)
-
-	def bits_to_flags(self, bits):
-		return {self.map_by_number[num] for num in self.map_by_number if bits & num}
-
-	def flags_to_bits(self, flags):
-		return sum(self.map_by_name[flag] for flag in flags if flag in self.map_by_name)
+INFO_MARK_CLASS = {
+	0: "generic",
+	1: "herb",
+	2: "river",
+	3: "place",
+	4: "mob",
+	5: "comment",
+	6: "road",
+	7: "object",
+	8: "action",
+	9: "locality"
+}
+INFO_MARK_CLASS_TO_BITS = {v: k for k, v in INFO_MARK_CLASS.items()}
 
 
-class MMapperException(Exception):
-	pass
+class InfoMark(object):
+	def __init__(self):
+		self.text = ""
+		self.type = INFO_MARK_TYPE[0]
+		self.cls = INFO_MARK_CLASS[0]
+		self.rotation_angle = 0
+		self.pos1 = Coordinates()
+		self.pos2 = Coordinates()
