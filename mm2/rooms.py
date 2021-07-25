@@ -53,7 +53,8 @@ MOB_FLAGS = NamedBitFlags(
 		"quest_mob",
 		"passive_mob",
 		"elite_mob",
-		"super_mob"
+		"super_mob",
+		"milkable"
 	]
 )
 
