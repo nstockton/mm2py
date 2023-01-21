@@ -37,6 +37,7 @@ import io
 import zlib
 from collections import OrderedDict
 from decimal import ROUND_HALF_UP, Decimal
+from functools import partial
 from typing import Any, BinaryIO, Optional
 
 # Local Modules:
@@ -140,10 +141,8 @@ class Database(object):
 				qstream.read_uint32()  # We don't need the header.
 			block_size: int = 8192
 			decompressor: Any = zlib.decompressobj()
-			data: bytes = compressed_stream.read(block_size)
-			while data:
+			for data in iter(partial(compressed_stream.read, block_size), b""):
 				decompressed_stream.write(decompressor.decompress(data))
-				data = compressed_stream.read(block_size)
 			del qstream
 		decompressed_stream.seek(0)
 		qstream = QFile(decompressed_stream)
@@ -194,14 +193,10 @@ class Database(object):
 				else:
 					ext.door_flags.update(DOOR_FLAGS.bits_to_flags(qstream.read_uint8()))
 				ext.door_name = qstream.read_string()
-				connection: int = qstream.read_uint32()
-				while connection != UINT32_MAX:
+				for connection in iter(qstream.read_uint32, UINT32_MAX):
 					ext.inbound_connections.append(connection)
-					connection = qstream.read_uint32()
-				connection = qstream.read_uint32()
-				while connection != UINT32_MAX:
+				for connection in iter(qstream.read_uint32, UINT32_MAX):
 					ext.outbound_connections.append(connection)
-					connection = qstream.read_uint32()
 				room._exits[direction] = ext
 			self.rooms[vnum] = room
 		for i in range(total_marks):
@@ -299,10 +294,8 @@ class Database(object):
 			uncompressed_stream.seek(0)
 			block_size: int = 8192
 			compressor: Any = zlib.compressobj()
-			data: bytes = uncompressed_stream.read(block_size)
-			while data:
+			for data in iter(partial(uncompressed_stream.read, block_size), b""):
 				output_stream.write(compressor.compress(data))
-				data = uncompressed_stream.read(block_size)
 			output_stream.write(compressor.flush())
 			del qstream
 		uncompressed_stream.seek(0)
