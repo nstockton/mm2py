@@ -144,13 +144,13 @@ SUN_DEATH_TYPE_TO_BITS: dict[str, int] = {v: k for k, v in SUN_DEATH_TYPE.items(
 
 TERRAIN_TYPE: dict[int, str] = {
 	0: "undefined",
-	1: "indoors",
+	1: "building",
 	2: "city",
 	3: "field",
 	4: "forest",
 	5: "hills",
 	6: "mountains",
-	7: "shallow",
+	7: "shallows",
 	8: "water",
 	9: "rapids",
 	10: "underwater",
