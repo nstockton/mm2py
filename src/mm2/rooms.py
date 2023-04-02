@@ -62,6 +62,7 @@ MOB_FLAGS: NamedBitFlags = NamedBitFlags(
 		"elite_mob",
 		"super_mob",
 		"milkable",
+		"rattlesnake",
 	]
 )
 
