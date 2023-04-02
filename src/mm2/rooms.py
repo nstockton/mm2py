@@ -102,12 +102,12 @@ EXIT_FLAGS: NamedBitFlags = NamedBitFlags(
 		"climb",
 		"random",
 		"special",
-		"no_match",
-		"flow",
+		"no_match",  # Exit not always visible, ignore it when syncing against available exits.
+		"flow",  # Water flow.
 		"no_flee",
 		"damage",
 		"fall",
-		"guarded",
+		"guarded",  # Mobs prevent movement.
 	]
 )
 
@@ -133,24 +133,24 @@ ALIGNMENT_TYPE_TO_BITS: dict[str, int] = {v: k for k, v in ALIGNMENT_TYPE.items(
 LIGHT_TYPE: dict[int, str] = {0: "undefined", 1: "dark", 2: "lit"}
 LIGHT_TYPE_TO_BITS: dict[str, int] = {v: k for k, v in LIGHT_TYPE.items()}
 
-PORTABLE_TYPE: dict[int, str] = {0: "undefined", 1: "portable", 2: "notportable"}
+PORTABLE_TYPE: dict[int, str] = {0: "undefined", 1: "portable", 2: "not_portable"}
 PORTABLE_TYPE_TO_BITS: dict[str, int] = {v: k for k, v in PORTABLE_TYPE.items()}
 
-RIDABLE_TYPE: dict[int, str] = {0: "undefined", 1: "ridable", 2: "notridable"}
+RIDABLE_TYPE: dict[int, str] = {0: "undefined", 1: "ridable", 2: "not_ridable"}
 RIDABLE_TYPE_TO_BITS: dict[str, int] = {v: k for k, v in RIDABLE_TYPE.items()}
 
-SUN_DEATH_TYPE: dict[int, str] = {0: "undefined", 1: "sundeath", 2: "nosundeath"}
+SUN_DEATH_TYPE: dict[int, str] = {0: "undefined", 1: "sundeath", 2: "no_sundeath"}
 SUN_DEATH_TYPE_TO_BITS: dict[str, int] = {v: k for k, v in SUN_DEATH_TYPE.items()}
 
 TERRAIN_TYPE: dict[int, str] = {
 	0: "undefined",
-	1: "building",
+	1: "building",  # Note that MMapper still calls this "indoors".
 	2: "city",
 	3: "field",
 	4: "forest",
 	5: "hills",
 	6: "mountains",
-	7: "shallows",
+	7: "shallows",  # Note that MMapper still calls this "shallow".
 	8: "water",
 	9: "rapids",
 	10: "underwater",
@@ -181,8 +181,8 @@ class Room(object):
 	def __init__(self, parent: Mapping[int, Room]) -> None:
 		self._parent: Mapping[int, Room] = parent
 		self.name: str = ""
-		self.static_desc: str = ""
-		self.dynamic_desc: str = ""
+		self.description: str = ""
+		self.contents: str = ""
 		self.note: str = ""
 		self.terrain: str = TERRAIN_TYPE[0]
 		self.light: str = LIGHT_TYPE[0]

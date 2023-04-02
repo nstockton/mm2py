@@ -155,8 +155,8 @@ class Database(object):
 		for i in range(total_rooms):
 			room: Room = Room(parent=self.rooms)
 			room.name = qstream.read_string()
-			room.static_desc = qstream.read_string()
-			room.dynamic_desc = qstream.read_string()
+			room.description = qstream.read_string()
+			room.contents = qstream.read_string()
 			vnum: int = qstream.read_uint32()
 			room.note = qstream.read_string()
 			room.terrain = TERRAIN_TYPE.get(qstream.read_uint8(), TERRAIN_TYPE[0])
@@ -250,8 +250,8 @@ class Database(object):
 			qstream.write_int32(coord)
 		for vnum, room in self.rooms.items():
 			qstream.write_string(room.name)
-			qstream.write_string(room.static_desc)
-			qstream.write_string(room.dynamic_desc)
+			qstream.write_string(room.description)
+			qstream.write_string(room.contents)
 			qstream.write_uint32(vnum)
 			qstream.write_string(room.note)
 			qstream.write_uint8(TERRAIN_TYPE_TO_BITS[room.terrain])
