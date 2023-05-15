@@ -20,13 +20,8 @@ After Python is installed, execute the following commands from the top level dir
 ```
 python -m venv .venv
 source .venv/bin/activate
-pip install poetry==1.1.13
-poetry install
-```
-
-If you wish to contribute to this project, install the development dependencies with the following commands.
-```
-source .venv/bin/activate
+pip install --upgrade --require-hashes --requirement requirements-poetry.txt
+poetry install --no-ansi
 pre-commit install -t pre-commit
 pre-commit install -t pre-push
 ```
