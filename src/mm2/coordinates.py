@@ -1,5 +1,4 @@
-# -*- coding: utf-8 -*-
-
+# Copyright (C) 2024 Chris Brannon and Nick Stockton
 # Original module written by Chris Brannon (https://github.com/CMB).
 # Maintained by Nick Stockton (https://github.com/nstockton).
 
@@ -28,20 +27,38 @@
 
 # For more information, please refer to <http://unlicense.org>
 
+"""Map coordinates."""
 
 # Future Modules:
 from __future__ import annotations
 
 # Built-in Modules:
 import operator
-from collections.abc import Callable, Generator, Sequence
-from typing import Any, Union, overload
+import sys
+from collections.abc import Callable, Iterator, Sequence
+from typing import Union, overload
 
 
-class Coordinates(Sequence[int]):
+if sys.version_info >= (3, 11):
+	from typing import Self
+else:
+	from typing_extensions import Self
+
+
+class Coordinates(Sequence[int]):  # NOQA: PLR0904
+	"""Room coordinates."""
+
 	__slots__: tuple[str, str, str] = ("x", "y", "z")
 
 	def __init__(self, x: int = 0, y: int = 0, z: int = 0) -> None:
+		"""
+		Defines the constructor.
+
+		Args:
+			x: The x coordinate.
+			y: The y coordinate.
+			z: The z coordinate.
+		"""
 		self.x: int = int(x)
 		self.y: int = int(y)
 		self.z: int = int(z)
@@ -57,7 +74,7 @@ class Coordinates(Sequence[int]):
 	def __getitem__(self, i: Union[int, slice]) -> Union[int, Sequence[int]]:
 		return (self.x, self.y, self.z)[i]
 
-	def __iter__(self) -> Generator[int, None, None]:
+	def __iter__(self) -> Iterator[int]:
 		yield self.x
 		yield self.y
 		yield self.z
@@ -66,42 +83,43 @@ class Coordinates(Sequence[int]):
 		return 3
 
 	def __setitem__(self, i: int, value: int) -> None:
-		if i == 0:
+		x, y, z = range(3)
+		if i == x:
 			self.x = value
-		elif i == 1:
+		elif i == y:
 			self.y = value
-		elif i == 2:
+		elif i == z:
 			self.z = value
 		else:
-			raise IndexError()
+			raise IndexError
 
 	def __repr__(self) -> str:
-		return f"Coordinates({self.x}, {self.y}, {self.z})"
+		return f"{type(self).__name__}({self.x}, {self.y}, {self.z})"
 
-	def __eq__(self, other: Any) -> bool:
-		if isinstance(other, Sequence) and len(other) == 3:
+	def __hash__(self) -> int:
+		return hash(tuple(self))
+
+	def __eq__(self, other: object) -> bool:
+		if isinstance(other, Sequence) and len(other) == len(self):
 			return bool(self.x == other[0] and self.y == other[1] and self.z == other[2])
 		return False
 
-	def __ne__(self, other: Any) -> bool:
-		if isinstance(other, Sequence) and len(other) == 3:
+	def __ne__(self, other: object) -> bool:
+		if isinstance(other, Sequence) and len(other) == len(self):
 			return bool(self.x != other[0] or self.y != other[1] or self.z != other[2])
 		return True
 
-	def __nonzero__(self) -> bool:
-		return self.x != 0 or self.y != 0 or self.z != 0
-
-	def _operator(self, other: Sequence[int], func: Callable[[int, int], int]) -> Coordinates:
+	def _operator(self, other: Sequence[int], func: Callable[[int, int], int]) -> Self:
 		if isinstance(other, Coordinates):
-			return Coordinates(func(self.x, other.x), func(self.y, other.y), func(self.z, other.z))
-		return Coordinates(func(self.x, other[0]), func(self.y, other[1]), func(self.z, other[2]))
+			return type(self)(func(self.x, other.x), func(self.y, other.y), func(self.z, other.z))
+		return type(self)(func(self.x, other[0]), func(self.y, other[1]), func(self.z, other[2]))
 
-	def _roperator(self, other: Sequence[int], func: Callable[[int, int], int]) -> Coordinates:
+	def _roperator(self, other: Sequence[int], func: Callable[[int, int], int]) -> Self:
 		if isinstance(other, Coordinates):
-			return Coordinates(func(other.x, self.x), func(other.y, self.y), func(other.z, self.z))
-		return Coordinates(func(other[0], self.x), func(other[1], self.y), func(other[2], self.z))
+			return type(self)(func(other.x, self.x), func(other.y, self.y), func(other.z, self.z))
+		return type(self)(func(other[0], self.x), func(other[1], self.y), func(other[2], self.z))
 
-	def _ioperator(self, other: Sequence[int], func: Callable[[int, int], int]) -> Coordinates:
+	def _ioperator(self, other: Sequence[int], func: Callable[[int, int], int]) -> Self:
 		if isinstance(other, Coordinates):
 			self.x = func(self.x, other.x)
 			self.y = func(self.y, other.y)
@@ -112,96 +130,96 @@ class Coordinates(Sequence[int]):
 			self.z = func(self.z, other[2])
 		return self
 
-	def __add__(self, other: Sequence[int]) -> Coordinates:
+	def __add__(self, other: Sequence[int]) -> Self:
 		return self._operator(other, operator.add)
 
 	__radd__ = __add__
 
-	def __iadd__(self, other: Sequence[int]) -> Coordinates:
+	def __iadd__(self, other: Sequence[int]) -> Self:
 		return self._ioperator(other, operator.add)
 
-	def __sub__(self, other: Sequence[int]) -> Coordinates:
+	def __sub__(self, other: Sequence[int]) -> Self:
 		return self._operator(other, operator.sub)
 
-	def __rsub__(self, other: Sequence[int]) -> Coordinates:
+	def __rsub__(self, other: Sequence[int]) -> Self:
 		return self._roperator(other, operator.sub)
 
-	def __isub__(self, other: Sequence[int]) -> Coordinates:
+	def __isub__(self, other: Sequence[int]) -> Self:
 		return self._ioperator(other, operator.sub)
 
-	def __mul__(self, other: Sequence[int]) -> Coordinates:
+	def __mul__(self, other: Sequence[int]) -> Self:
 		return self._operator(other, operator.mul)
 
 	__rmul__ = __mul__
 
-	def __imul__(self, other: Sequence[int]) -> Coordinates:
+	def __imul__(self, other: Sequence[int]) -> Self:
 		return self._ioperator(other, operator.mul)
 
-	def __floordiv__(self, other: Sequence[int]) -> Coordinates:
+	def __floordiv__(self, other: Sequence[int]) -> Self:
 		return self._operator(other, operator.floordiv)
 
-	def __rfloordiv__(self, other: Sequence[int]) -> Coordinates:
+	def __rfloordiv__(self, other: Sequence[int]) -> Self:
 		return self._roperator(other, operator.floordiv)
 
-	def __ifloordiv__(self, other: Sequence[int]) -> Coordinates:
+	def __ifloordiv__(self, other: Sequence[int]) -> Self:
 		return self._ioperator(other, operator.floordiv)
 
-	def __truediv__(self, other: Sequence[int]) -> Coordinates:
+	def __truediv__(self, other: Sequence[int]) -> Self:
 		return self._operator(other, operator.truediv)
 
-	def __rtruediv__(self, other: Sequence[int]) -> Coordinates:
+	def __rtruediv__(self, other: Sequence[int]) -> Self:
 		return self._roperator(other, operator.truediv)
 
-	def __itruediv__(self, other: Sequence[int]) -> Coordinates:
+	def __itruediv__(self, other: Sequence[int]) -> Self:
 		return self._ioperator(other, operator.truediv)
 
-	def __mod__(self, other: Sequence[int]) -> Coordinates:
+	def __mod__(self, other: Sequence[int]) -> Self:
 		return self._operator(other, operator.mod)
 
-	def __rmod__(self, other: Sequence[int]) -> Coordinates:
+	def __rmod__(self, other: Sequence[int]) -> Self:
 		return self._roperator(other, operator.mod)
 
-	def __pow__(self, other: Sequence[int]) -> Coordinates:
+	def __pow__(self, other: Sequence[int]) -> Self:
 		return self._operator(other, operator.pow)
 
-	def __rpow__(self, other: Sequence[int]) -> Coordinates:
+	def __rpow__(self, other: Sequence[int]) -> Self:
 		return self._roperator(other, operator.pow)
 
-	def __lshift__(self, other: Sequence[int]) -> Coordinates:
+	def __lshift__(self, other: Sequence[int]) -> Self:
 		return self._operator(other, operator.lshift)
 
-	def __rlshift__(self, other: Sequence[int]) -> Coordinates:
+	def __rlshift__(self, other: Sequence[int]) -> Self:
 		return self._roperator(other, operator.lshift)
 
-	def __rshift__(self, other: Sequence[int]) -> Coordinates:
+	def __rshift__(self, other: Sequence[int]) -> Self:
 		return self._operator(other, operator.rshift)
 
-	def __rrshift__(self, other: Sequence[int]) -> Coordinates:
+	def __rrshift__(self, other: Sequence[int]) -> Self:
 		return self._roperator(other, operator.rshift)
 
-	def __and__(self, other: Sequence[int]) -> Coordinates:
+	def __and__(self, other: Sequence[int]) -> Self:
 		return self._operator(other, operator.and_)
 
 	__rand__ = __and__
 
-	def __or__(self, other: Sequence[int]) -> Coordinates:
+	def __or__(self, other: Sequence[int]) -> Self:
 		return self._operator(other, operator.or_)
 
 	__ror__ = __or__
 
-	def __xor__(self, other: Sequence[int]) -> Coordinates:
+	def __xor__(self, other: Sequence[int]) -> Self:
 		return self._operator(other, operator.xor)
 
 	__rxor__ = __xor__
 
-	def __neg__(self) -> Coordinates:
-		return Coordinates(operator.neg(self.x), operator.neg(self.y), operator.neg(self.z))
+	def __neg__(self) -> Self:
+		return type(self)(operator.neg(self.x), operator.neg(self.y), operator.neg(self.z))
 
-	def __pos__(self) -> Coordinates:
-		return Coordinates(operator.pos(self.x), operator.pos(self.y), operator.pos(self.z))
+	def __pos__(self) -> Self:
+		return type(self)(operator.pos(self.x), operator.pos(self.y), operator.pos(self.z))
 
-	def __abs__(self) -> Coordinates:
-		return Coordinates(abs(self.x), abs(self.y), abs(self.z))
+	def __abs__(self) -> Self:
+		return type(self)(abs(self.x), abs(self.y), abs(self.z))
 
-	def __invert__(self) -> Coordinates:
-		return Coordinates(-self.x, -self.y, -self.z)
+	def __invert__(self) -> Self:
+		return type(self)(-self.x, -self.y, -self.z)

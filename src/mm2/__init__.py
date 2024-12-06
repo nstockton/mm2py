@@ -1,5 +1,4 @@
-# -*- coding: utf-8 -*-
-
+# Copyright (C) 2024 Chris Brannon and Nick Stockton
 # Original module written by Chris Brannon (https://github.com/CMB).
 # Maintained by Nick Stockton (https://github.com/nstockton).
 
@@ -28,7 +27,6 @@
 
 # For more information, please refer to <http://unlicense.org>
 
-
 # Future Modules:
 from __future__ import annotations
 
@@ -36,7 +34,7 @@ from __future__ import annotations
 from collections.abc import Iterable
 
 
-class NamedBitFlags(object):
+class NamedBitFlags:
 	def __init__(self, flags: Iterable[str]) -> None:
 		self.map_by_name: dict[str, int] = {}
 		self.map_by_number: dict[int, str] = {}
@@ -51,9 +49,14 @@ class NamedBitFlags(object):
 		return sum(self.map_by_name[flag] for flag in flags if flag in self.map_by_name)
 
 
-class MMapperException(Exception):
+class MMapperError(Exception):
 	pass
 
 
-__all__: list[str] = ["coordinates", "database", "info_marks", "rooms", "qfile"]
 __version__: str = "0.0.0"
+
+
+__all__: list[str] = [
+	"MMapperError",
+	"NamedBitFlags",
+]

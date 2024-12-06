@@ -1,5 +1,4 @@
-# -*- coding: utf-8 -*-
-
+# Copyright (C) 2024 Chris Brannon and Nick Stockton
 # Original module written by Chris Brannon (https://github.com/CMB).
 # Maintained by Nick Stockton (https://github.com/nstockton).
 
@@ -28,6 +27,7 @@
 
 # For more information, please refer to <http://unlicense.org>
 
+"""Database loading and saving."""
 
 # Future Modules:
 from __future__ import annotations
@@ -38,10 +38,11 @@ import zlib
 from collections import OrderedDict
 from decimal import ROUND_HALF_UP, Decimal
 from functools import partial
+from pathlib import Path
 from typing import Any, BinaryIO, Optional
 
 # Local Modules:
-from . import MMapperException
+from . import MMapperError
 from .coordinates import Coordinates
 from .info_marks import (
 	INFO_MARK_CLASS,
@@ -96,16 +97,16 @@ def lround(value: float) -> int:
 	return int(Decimal(str(value)).quantize(Decimal(0), rounding=ROUND_HALF_UP))
 
 
-class BadMagicNumberException(MMapperException):
+class BadMagicNumberError(MMapperError):
 	pass
 
 
-class UnsupportedVersionException(MMapperException):
+class UnsupportedVersionError(MMapperError):
 	def __init__(self, version: int) -> None:
-		MMapperException.__init__(self, "Do not support version 0{:o} of MMapper data".format(version))
+		MMapperError.__init__(self, f"Do not support version 0{version:o} of MMapper data")
 
 
-class Database(object):
+class Database:
 	def __init__(self, file_name: Optional[str] = None) -> None:
 		self.selected: Coordinates = Coordinates()
 		self.rooms: dict[int, Room] = OrderedDict()
@@ -113,28 +114,27 @@ class Database(object):
 		if file_name is not None:
 			self.load(file_name)
 
-	def load(self, file_name: str) -> None:  # NOQA: C901
+	def load(self, file_name: str) -> None:  # NOQA: C901, PLR0912, PLR0915
 		decompressed_stream: BinaryIO = io.BytesIO()
 		qstream: QFile
-		with open(file_name, "rb") as compressed_stream:
+		with Path(file_name).open("rb") as compressed_stream:
 			qstream = QFile(compressed_stream)
 			magic: int = qstream.read_uint32()
 			if magic != MMAPPER_MAGIC:
-				raise BadMagicNumberException()
+				raise BadMagicNumberError
 			version: int = qstream.read_int32()
 			if version not in MMAPPER_VERSIONS:
-				raise UnsupportedVersionException(version)
-			else:
-				version = MMAPPER_VERSIONS[version]
-			if version >= 243:
+				raise UnsupportedVersionError(version)
+			version = MMAPPER_VERSIONS[version]
+			if version >= 243:  # NOQA: PLR2004
 				# As of MMapper V2.43, MMapper uses qCompress and qUncompress
 				# from the QByteArray class for data compression.
 				# From the web page at
-				# https://doc.qt.io/archives/qt-5.7/qbytearray.html#qUncompress
-				# "Note: If you want to use this function to uncompress external data
+				"""https://doc.qt.io/archives/qt-5.7/qbytearray.html#qUncompress"""
+				# "Note, If you want to use this function to uncompress external data
 				# that was compressed using zlib, you first need to prepend a four byte header
 				# to the byte array containing the data. The header must contain
-				# the expected length (in bytes) of the uncompressed data, expressed as
+				# the expected length in bytes of the uncompressed data, expressed as
 				# an unsigned, big-endian, 32-bit integer."
 				# We can therefore assume that MMapper data files stored by V2.43
 				# or later are compressed using standard zlib with a non-standard 4-byte header.
@@ -149,10 +149,10 @@ class Database(object):
 		total_rooms: int = qstream.read_uint32()
 		total_marks: int = qstream.read_uint32()
 		self.selected += (qstream.read_int32(), qstream.read_int32(), qstream.read_int32())  # (x, y, z)
-		if version <= 251:
+		if version <= 251:  # NOQA: PLR2004
 			# In version 251 and below, moving north would decrement the y coordinate.
 			self.selected.y = -self.selected.y
-		for i in range(total_rooms):
+		for _ in range(total_rooms):
 			room: Room = Room(parent=self.rooms)
 			room.name = qstream.read_string()
 			room.description = qstream.read_string()
@@ -163,9 +163,9 @@ class Database(object):
 			room.light = LIGHT_TYPE.get(qstream.read_uint8(), LIGHT_TYPE[0])
 			room.alignment = ALIGNMENT_TYPE.get(qstream.read_uint8(), ALIGNMENT_TYPE[0])
 			room.portable = PORTABLE_TYPE.get(qstream.read_uint8(), PORTABLE_TYPE[0])
-			if version >= 202:
+			if version >= 202:  # NOQA: PLR2004
 				room.ridable = RIDABLE_TYPE.get(qstream.read_uint8(), RIDABLE_TYPE[0])
-			if version >= 240:
+			if version >= 240:  # NOQA: PLR2004
 				room.sundeath = SUN_DEATH_TYPE.get(qstream.read_uint8(), SUN_DEATH_TYPE[0])
 				room.mob_flags.update(MOB_FLAGS.bits_to_flags(qstream.read_uint32()))
 				room.load_flags.update(LOAD_FLAGS.bits_to_flags(qstream.read_uint32()))
@@ -174,21 +174,22 @@ class Database(object):
 				room.load_flags.update(LOAD_FLAGS.bits_to_flags(qstream.read_uint16()))
 			room.updated = bool(qstream.read_uint8())
 			room.coordinates += (qstream.read_int32(), qstream.read_int32(), qstream.read_int32())
-			if version <= 251:
+			if version <= 251:  # NOQA: PLR2004
 				# In version 251 and below, moving north would decrement the y coordinate.
 				room.y = -room.y
 			for direction in DIRECTIONS:
 				ext: Exit = Exit(parent=room)  # 'exit' is a built in function in Python. Use 'ext' instead.
-				if version >= 240:
+				if version >= 240:  # NOQA: PLR2004
 					ext.exit_flags.update(EXIT_FLAGS.bits_to_flags(qstream.read_uint16()))
 				else:
 					ext.exit_flags.update(EXIT_FLAGS.bits_to_flags(qstream.read_uint8()))
 					if "door" in ext.exit_flags:
 						ext.exit_flags.add("exit")
-				# Exits saved after MMapper V2.04 were offset by 1 bit causing corruption and excessive NO_MATCH exits.
-				if version >= 204 and version < 251 and "no_match" in ext.exit_flags:
+				# Exits saved after MMapper V2.04 were offset by 1 bit
+				# causing corruption and excessive NO_MATCH exits.
+				if version >= 204 and version < 251 and "no_match" in ext.exit_flags:  # NOQA: PLR2004
 					ext.exit_flags.remove("no_match")
-				if version >= 237:
+				if version >= 237:  # NOQA: PLR2004
 					ext.door_flags.update(DOOR_FLAGS.bits_to_flags(qstream.read_uint16()))
 				else:
 					ext.door_flags.update(DOOR_FLAGS.bits_to_flags(qstream.read_uint8()))
@@ -197,26 +198,26 @@ class Database(object):
 					ext.inbound_connections.append(connection)
 				for connection in iter(qstream.read_uint32, UINT32_MAX):
 					ext.outbound_connections.append(connection)
-				room._exits[direction] = ext
+				room._exits[direction] = ext  # NOQA: SLF001
 			self.rooms[vnum] = room
-		for i in range(total_marks):
+		for _ in range(total_marks):
 			mark: InfoMark = InfoMark()
-			if version <= 251:
+			if version <= 251:  # NOQA: PLR2004
 				qstream.read_string()  # Mark name (ignored).
 			mark.text = qstream.read_string()
-			if version <= 251:
+			if version <= 251:  # NOQA: PLR2004
 				qstream.read_uint32()  # Julian day (ignored).
 				qstream.read_uint32()  # Milliseconds since midnight (ignored).
 				qstream.read_uint8()  # Time zone (0 = local time, 1 = UTC) (ignored).
 			mark.type = INFO_MARK_TYPE.get(qstream.read_uint8(), INFO_MARK_TYPE[0])
-			if version >= 237:
+			if version >= 237:  # NOQA: PLR2004
 				mark.cls = INFO_MARK_CLASS.get(qstream.read_uint8(), INFO_MARK_CLASS[0])
 				mark.rotation_angle = qstream.read_int32()
-				if version < 260:
+				if version < 260:  # NOQA: PLR2004
 					mark.rotation_angle //= INFO_MARK_SCALE
 			mark.pos1 += (qstream.read_int32(), qstream.read_int32(), qstream.read_int32())
 			mark.pos2 += (qstream.read_int32(), qstream.read_int32(), qstream.read_int32())
-			if version <= 251:
+			if version <= 251:  # NOQA: PLR2004
 				mark.pos1 += INFO_MARK_HALF_ROOM_OFFSET
 				mark.pos2 += INFO_MARK_HALF_ROOM_OFFSET
 				if mark.type == "text":
@@ -266,7 +267,7 @@ class Database(object):
 			for coord in room.coordinates:
 				qstream.write_int32(coord)
 			for direction in DIRECTIONS:
-				ext: Exit = room._exits[direction]
+				ext: Exit = room._exits[direction]  # NOQA: SLF001
 				qstream.write_uint16(EXIT_FLAGS.flags_to_bits(ext.exit_flags))
 				qstream.write_uint16(DOOR_FLAGS.flags_to_bits(ext.door_flags))
 				qstream.write_string(ext.door_name)
@@ -286,7 +287,7 @@ class Database(object):
 			for coord in mark.pos2:
 				qstream.write_int32(coord)
 		del qstream
-		with open(file_name, "wb") as output_stream:
+		with Path(file_name).open("wb") as output_stream:
 			qstream = QFile(output_stream)
 			qstream.write_uint32(MMAPPER_MAGIC)
 			qstream.write_int32(max(MMAPPER_VERSIONS))

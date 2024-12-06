@@ -1,9 +1,9 @@
 [build-system]
 	requires = [
 		"poetry-core>=1.0.0",
-		"poetry-dynamic-versioning==0.20.0",
+		"poetry-dynamic-versioning==1.4.0",
 	]
-	build-backend = "poetry.core.masonry.api"
+	build-backend = "poetry_dynamic_versioning.backend"
 
 [tool.poetry]
 	name = "mm2py"
@@ -13,7 +13,7 @@
 		"Nick Stockton <nstockton@users.noreply.github.com>",
 		"Chris Brannon <CMB@users.noreply.github.com>",
 	]
-	license = "MPL-2.0"
+	license = "Unlicense"
 	readme = "README.md"
 	homepage = "https://github.com/nstockton/mm2py"
 	repository = "https://github.com/nstockton/mm2py"
@@ -25,11 +25,11 @@
 		"Programming Language :: Python",
 		"Programming Language :: Python :: 3",
 		"Programming Language :: Python :: 3 :: Only",
-		"Programming Language :: Python :: 3.7",
-		"Programming Language :: Python :: 3.8",
 		"Programming Language :: Python :: 3.9",
 		"Programming Language :: Python :: 3.10",
 		"Programming Language :: Python :: 3.11",
+		"Programming Language :: Python :: 3.12",
+		"Programming Language :: Python :: 3.13",
 		"Programming Language :: Python :: Implementation",
 		"Programming Language :: Python :: Implementation :: CPython",
 		"Operating System :: MacOS",
@@ -53,25 +53,20 @@
 	exclude = []
 
 [tool.poetry.dependencies]
-	python = "^3.7"
+	python = "^3.9"
+	typing-extensions = {version = "^4.8", python = ">= 3.11"}
 
 [tool.poetry.dev-dependencies]
-	poetry-dynamic-versioning = "0.20.0"
-	pre-commit = "^2.17"
+	poetry-dynamic-versioning = {version = "1.4.0", extras = ["plugin"]}
+	pre-commit = "^3.5"
 
 [tool.poetry.group.lint.dependencies]
-	click = "8.0.4"  # Required by Tan.
-	flake8 = "^3.9"
-	flake8-tabs = "^2.3"
-	importlib-metadata = "4.13.0"  # Prevent version in Poetry requirements from being overridden.
-	isort = "^5.10.1"
-	jinja2 = "3.0.3"  # Required by Tan.
-	mypy = ">=0.950,<1.0"
-	pyproject-flake8 = "^3.9"
-	tan = "^21.14"
+	isort = "^5.13"
+	mypy = "^1.8"
+	ruff = "^0.6"
 
 [tool.poetry.group.test.dependencies]
-	coverage = {version = "^6.5", extras = ["toml"]}
+	coverage = {version = "^7.4", extras = ["toml"]}
 
 [tool.poetry-dynamic-versioning]
 	enable = true
@@ -86,13 +81,79 @@
 		"(^__version__(?:\\s*[:]\\s*str)?\\s*=\\s*['\"])[^'\"]*(['\"])",
 	]
 
-[tool.black]
-	use-tabs = true
-	safe = true
+[tool.ruff]
+	extend-include = [
+		"*.pyw",
+	]
+	force-exclude = true
 	line-length = 110
-	target-version = ["py37", "py38", "py39", "py310"]
-	exclude = '(/(\.eggs|\.git|\.mypy_cache|\.tox|\.venv|build|dist)|__pycache__)'
-	include = '/((src/mm2|tests).*\.py[isw]?)$'
+
+[tool.ruff.format]
+	docstring-code-format = false
+	indent-style = "tab"
+	line-ending = "cr-lf"
+
+[tool.ruff.lint]
+	preview = true
+	# select = ["E4", "E7", "E9", "F"]  # The default.
+	select = ["ALL"]  # Enable all rules.
+	extend-select = [
+		"D213",  # Multi-line docstring summary should start at the second line.
+	]
+	ignore = [
+		"ANN",  # Flake8-annotations. (We use MyPy for this)
+		"ARG",  # Flake8-unused-arguments.
+		"B019",  # Use of functools.lru_cache or functools.cache on methods can lead to memory leaks.
+		"COM812",  # Trailing comma missing. (Conflicts with formatter)
+		"D",  # Remove once docstrings added.
+		"D105",  # Missing docstring in magic method.
+		"D206",  # Docstring should be indented with spaces, not tabs.
+		"D212",  # Multi-line docstring summary should start at the first line.
+		"EM",  # Flake8-errmsg.
+		"G",  # Flake8-logging-format.
+		"I",  # ISort. (We use ISort package for this)
+		"ISC001",  # Implicitly concatenated string literals on one line. (Conflicts with formatter)
+		"PT",  # Flake8-pytest-style.
+		"T20",  # Flake8-print.
+		"TCH",  # Flake8-type-checking.
+		"TRY003",  # Avoid specifying long messages outside the exception class.
+		"UP007",  # Use X | Y for type annotations. (I hate this syntax)
+		"W191",  # Indentation contains tabs.
+	]
+	typing-modules = [
+		"cah.typedef",
+		"knickknacks.typedef",
+		"mudproto.typedef",
+	]
+	unfixable = []
+
+[tool.ruff.lint.flake8-builtins]
+	# To stop Ruff complaining when a built-in name is used as a variable name, add the name to the list.
+	builtins-ignorelist = []
+
+[tool.ruff.lint.flake8-copyright]
+	author = "Chris Brannon and Nick Stockton"
+	min-file-size = 1  # Minimum file size (in bytes) in which to enforce copyright.
+
+[tool.ruff.lint.flake8-implicit-str-concat]
+	allow-multiline = false
+
+[tool.ruff.lint.mccabe]
+	max-complexity = 15
+
+[tool.ruff.lint.per-file-ignores]
+	"**/__init__.py" = ["D1"]
+	"**/__main__.py" = ["D1"]
+	"./tests/**" = ["D1", "PLR6301"]
+	"**/typedef.py" = ["F401"]
+
+[tool.ruff.lint.pydocstyle]
+	convention = "google"
+	ignore-decorators = ["typing.overload"]
+
+[tool.ruff.lint.ruff]
+	# Make it a violation to use a tuple in a subscript without parentheses.
+	parenthesize-tuple-in-subscript = true
 
 [tool.coverage.report]
 	precision = 0
@@ -113,54 +174,6 @@
 	source = ["mm2"]
 	omit = []
 
-[tool.flake8]
-	# Note that boolean values need to be inside strings. Flake8 will convert them.
-	# Plugins
-	use-flake8-tabs = "true"
-	# Not all checks are replaced by flake8-tabs, however, pycodestyle is still not compatible with tabs.
-	use-pycodestyle-indent = "false"
-	continuation-style = "hanging"
-	## The following are replaced by flake8-tabs plugin, reported as ET codes rather than E codes.
-	# E121, E122, E123, E126, E127, E128,
-	## The following (all disabled) are not replaced by flake8-tabs,
-	# E124 - Requires mixing spaces and tabs: Closing bracket does not match visual indentation.
-	# E125 - Does not take tabs into consideration: Continuation line with same indent as next logical line.
-	# E129 - Requires mixing spaces and tabs: Visually indented line with same indent as next logical line
-	# E131 - Requires mixing spaces and tabs: Continuation line unaligned for hanging indent
-	# E133 - Our preference handled by ET126: Closing bracket is missing indentation
-	# Reporting
-	statistics = "true"
-	doctests = "true"
-	show-source = "true"
-	# Options
-	max-complexity = 15
-	max-line-length = 110
-	# Final bracket should match indentation of the start of the line of the opening bracket
-	hang-closing = "false"
-	ignore = [
-		"E203",  # whitespace before ':'. Caused by Black.
-		"W191",  # indentation contains tabs
-		"W503",  # line break before binary operator. We want W504(line break after binary operator)
-		"ET113",  # (flake8-tabs) use of alignment as indentation, but option continuation-style=hanging does not permit this.
-		"ET121",  # (flake8-tabs) unexpected number of tabs at start of definition line. Caused by Black.
-	]
-	exclude = [
-		".git",
-		"__pycache__",
-		".env",
-		".venv",
-		"env",
-		"venv",
-		"env.bak",
-		"venv.bak",
-		"ENV",
-	]
-	filename = [
-		"*.py",
-		"*.pys",
-		"*.pyw",
-	]
-
 [tool.isort]
 	line_length = 110  # The max length of an import line (used for wrapping long imports).
 	color_output = false
@@ -168,6 +181,8 @@
 	supported_extensions = ["py", "pyi", "pys", "pyw"]
 	extend_skip = []  # List of files to skip.
 	indent = "tab"  # String to place for indents.
+	atomic = true  # Ensures the output doesn't save if the resulting file contains syntax errors.
+	dedup_headings = true  # Only show an identical custom import heading comment once.
 	multi_line_output = 3  # Vertical hanging indent for long sections of multiple imports.
 	include_trailing_comma = true  # Include a trailing comma on multi line imports that include parentheses.
 	force_grid_wrap = 0  # Only consider line length when forcing lines to be grid wrapped.
@@ -190,7 +205,9 @@
 	# The heading to display for third-party imports.
 	import_heading_thirdparty = "Third-party Modules:"
 	# Override known third-party imports.
-	known_third_party = []
+	known_third_party = [
+		"typing_extensions",
+	]
 	# The heading to display for first-party imports.
 	import_heading_firstparty = "MM2 Modules:"
 	# Override known first-party imports.

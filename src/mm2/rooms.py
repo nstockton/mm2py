@@ -1,5 +1,4 @@
-# -*- coding: utf-8 -*-
-
+# Copyright (C) 2024 Chris Brannon and Nick Stockton
 # Original module written by Chris Brannon (https://github.com/CMB).
 # Maintained by Nick Stockton (https://github.com/nstockton).
 
@@ -28,6 +27,7 @@
 
 # For more information, please refer to <http://unlicense.org>
 
+"""Room definitions."""
 
 # Future Modules:
 from __future__ import annotations
@@ -164,7 +164,7 @@ TERRAIN_TYPE: dict[int, str] = {
 TERRAIN_TYPE_TO_BITS: dict[str, int] = {v: k for k, v in TERRAIN_TYPE.items()}
 
 
-class Exit(object):
+class Exit:
 	def __init__(self, parent: Room) -> None:
 		self._parent: Room = parent
 		self.exit_flags: set[str] = set()
@@ -178,7 +178,7 @@ class Exit(object):
 		return self._parent
 
 
-class Room(object):
+class Room:
 	def __init__(self, parent: Mapping[int, Room]) -> None:
 		self._parent: Mapping[int, Room] = parent
 		self.name: str = ""
@@ -230,8 +230,7 @@ class Room(object):
 		for vnum, room in self.parent.items():
 			if room is self:
 				return vnum
-		else:
-			return None
+		return None
 
 	@property
 	def exits(self) -> dict[str, Exit]:

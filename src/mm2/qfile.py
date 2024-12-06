@@ -1,5 +1,4 @@
-# -*- coding: utf-8 -*-
-
+# Copyright (C) 2024 Chris Brannon and Nick Stockton
 # Original module written by Chris Brannon (https://github.com/CMB).
 # Maintained by Nick Stockton (https://github.com/nstockton).
 
@@ -28,6 +27,7 @@
 
 # For more information, please refer to <http://unlicense.org>
 
+"""QT file streams."""
 
 # Future Modules:
 from __future__ import annotations
@@ -37,7 +37,7 @@ import struct
 from typing import BinaryIO
 
 # Local Modules:
-from . import MMapperException
+from . import MMapperError
 
 
 INT8_MAX: int = 0x7F
@@ -48,18 +48,18 @@ INT32_MAX: int = 0x7FFFFFFF
 UINT32_MAX: int = 0xFFFFFFFF
 
 
-class IncompleteQFileException(MMapperException):
+class IncompleteQFileError(MMapperError):
 	pass
 
 
-class QFile(object):
+class QFile:
 	def __init__(self, stream: BinaryIO) -> None:
 		self._stream: BinaryIO = stream
 
 	def _read(self, length: int) -> bytes:
 		data: bytes = self._stream.read(length)
 		if len(data) != length:
-			raise IncompleteQFileException(f"{length} bytes expected, got {len(data)}")
+			raise IncompleteQFileError(f"{length} bytes expected, got {len(data)}")
 		return data
 
 	def read_int8(self) -> int:

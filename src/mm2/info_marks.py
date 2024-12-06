@@ -1,5 +1,4 @@
-# -*- coding: utf-8 -*-
-
+# Copyright (C) 2024 Chris Brannon and Nick Stockton
 # Original module written by Chris Brannon (https://github.com/CMB).
 # Maintained by Nick Stockton (https://github.com/nstockton).
 
@@ -28,6 +27,7 @@
 
 # For more information, please refer to <http://unlicense.org>
 
+"""Info Mark definitions."""
 
 # Future Modules:
 from __future__ import annotations
@@ -64,7 +64,7 @@ INFO_MARK_CLASS: dict[int, str] = {
 INFO_MARK_CLASS_TO_BITS: dict[str, int] = {v: k for k, v in INFO_MARK_CLASS.items()}
 
 
-class InfoMark(object):
+class InfoMark:
 	def __init__(self) -> None:
 		self.text: str = ""
 		self.type: str = INFO_MARK_TYPE[0]
