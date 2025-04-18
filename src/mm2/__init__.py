@@ -31,24 +31,8 @@
 from __future__ import annotations
 
 # Built-in Modules:
-from collections.abc import Iterable
 from contextlib import suppress
 from typing import TYPE_CHECKING
-
-
-class NamedBitFlags:
-	def __init__(self, flags: Iterable[str]) -> None:
-		self.map_by_name: dict[str, int] = {}
-		self.map_by_number: dict[int, str] = {}
-		for bit, name in enumerate(flags, 1):
-			self.map_by_number[1 << (bit - 1)] = name
-			self.map_by_name[name] = 1 << (bit - 1)
-
-	def bits_to_flags(self, bits: int) -> set[str]:
-		return {self.map_by_number[num] for num in self.map_by_number if bits & num}
-
-	def flags_to_bits(self, flags: Iterable[str]) -> int:
-		return sum(self.map_by_name[flag] for flag in flags if flag in self.map_by_name)
 
 
 class MMapperError(Exception):
@@ -63,6 +47,5 @@ if not TYPE_CHECKING:
 
 __all__: list[str] = [
 	"MMapperError",
-	"NamedBitFlags",
 	"__version__",
 ]

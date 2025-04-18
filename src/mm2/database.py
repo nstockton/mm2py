@@ -58,24 +58,18 @@ from .info_marks import (
 )
 from .qfile import UINT32_MAX, QFile
 from .rooms import (
-	ALIGNMENT_TYPE,
-	ALIGNMENT_TYPE_TO_BITS,
-	DOOR_FLAGS,
-	EXIT_FLAGS,
-	LIGHT_TYPE,
-	LIGHT_TYPE_TO_BITS,
-	LOAD_FLAGS,
-	MOB_FLAGS,
-	PORTABLE_TYPE,
-	PORTABLE_TYPE_TO_BITS,
-	RIDABLE_TYPE,
-	RIDABLE_TYPE_TO_BITS,
-	SUN_DEATH_TYPE,
-	SUN_DEATH_TYPE_TO_BITS,
-	TERRAIN_TYPE,
-	TERRAIN_TYPE_TO_BITS,
+	Alignment,
+	DoorFlags,
 	Exit,
+	ExitFlags,
+	Light,
+	LoadFlags,
+	MobFlags,
+	Portable,
+	Ridable,
 	Room,
+	Sundeath,
+	Terrain,
 )
 
 
@@ -151,7 +145,7 @@ class Database:
 		self.selected += (qstream.read_int32(), qstream.read_int32(), qstream.read_int32())  # (x, y, z)
 		if version <= 251:  # NOQA: PLR2004
 			# In version 251 and below, moving north would decrement the y coordinate.
-			self.selected.y = -self.selected.y
+			self.selected.y *= -1
 		for _ in range(total_rooms):
 			room: Room = Room(parent=self.rooms)
 			room.name = qstream.read_string()
@@ -159,40 +153,40 @@ class Database:
 			room.contents = qstream.read_string()
 			vnum: int = qstream.read_uint32()
 			room.note = qstream.read_string()
-			room.terrain = TERRAIN_TYPE.get(qstream.read_uint8(), TERRAIN_TYPE[0])
-			room.light = LIGHT_TYPE.get(qstream.read_uint8(), LIGHT_TYPE[0])
-			room.alignment = ALIGNMENT_TYPE.get(qstream.read_uint8(), ALIGNMENT_TYPE[0])
-			room.portable = PORTABLE_TYPE.get(qstream.read_uint8(), PORTABLE_TYPE[0])
+			room.terrain = Terrain(qstream.read_uint8())
+			room.light = Light(qstream.read_uint8())
+			room.alignment = Alignment(qstream.read_uint8())
+			room.portable = Portable(qstream.read_uint8())
 			if version >= 202:  # NOQA: PLR2004
-				room.ridable = RIDABLE_TYPE.get(qstream.read_uint8(), RIDABLE_TYPE[0])
+				room.ridable = Ridable(qstream.read_uint8())
 			if version >= 240:  # NOQA: PLR2004
-				room.sundeath = SUN_DEATH_TYPE.get(qstream.read_uint8(), SUN_DEATH_TYPE[0])
-				room.mob_flags.update(MOB_FLAGS.bits_to_flags(qstream.read_uint32()))
-				room.load_flags.update(LOAD_FLAGS.bits_to_flags(qstream.read_uint32()))
+				room.sundeath = Sundeath(qstream.read_uint8())
+				room.mob_flags |= MobFlags(qstream.read_uint32())
+				room.load_flags |= LoadFlags(qstream.read_uint32())
 			else:
-				room.mob_flags.update(MOB_FLAGS.bits_to_flags(qstream.read_uint16()))
-				room.load_flags.update(LOAD_FLAGS.bits_to_flags(qstream.read_uint16()))
+				room.mob_flags |= MobFlags(qstream.read_uint16())
+				room.load_flags |= LoadFlags(qstream.read_uint16())
 			room.updated = bool(qstream.read_uint8())
 			room.coordinates += (qstream.read_int32(), qstream.read_int32(), qstream.read_int32())
 			if version <= 251:  # NOQA: PLR2004
 				# In version 251 and below, moving north would decrement the y coordinate.
-				room.y = -room.y
+				room.y *= -1
 			for direction in DIRECTIONS:
 				ext: Exit = Exit(parent=room)  # 'exit' is a built in function in Python. Use 'ext' instead.
 				if version >= 240:  # NOQA: PLR2004
-					ext.exit_flags.update(EXIT_FLAGS.bits_to_flags(qstream.read_uint16()))
+					ext.exit_flags |= ExitFlags(qstream.read_uint16())
 				else:
-					ext.exit_flags.update(EXIT_FLAGS.bits_to_flags(qstream.read_uint8()))
-					if "door" in ext.exit_flags:
-						ext.exit_flags.add("exit")
+					ext.exit_flags |= ExitFlags(qstream.read_uint8())
+					if ExitFlags.DOOR in ext.exit_flags:
+						ext.exit_flags |= ExitFlags.EXIT
 				# Exits saved after MMapper V2.04 were offset by 1 bit
 				# causing corruption and excessive NO_MATCH exits.
-				if version >= 204 and version < 251 and "no_match" in ext.exit_flags:  # NOQA: PLR2004
-					ext.exit_flags.remove("no_match")
+				if 204 <= version <= 250 and ExitFlags.NO_MATCH in ext.exit_flags:  # NOQA: PLR2004
+					ext.exit_flags &= ~ExitFlags.NO_MATCH  # Clear NO_MATCH flag.
 				if version >= 237:  # NOQA: PLR2004
-					ext.door_flags.update(DOOR_FLAGS.bits_to_flags(qstream.read_uint16()))
+					ext.door_flags |= DoorFlags(qstream.read_uint16())
 				else:
-					ext.door_flags.update(DOOR_FLAGS.bits_to_flags(qstream.read_uint8()))
+					ext.door_flags |= DoorFlags(qstream.read_uint8())
 				ext.door_name = qstream.read_string()
 				for connection in iter(qstream.read_uint32, UINT32_MAX):
 					ext.inbound_connections.append(connection)
@@ -228,8 +222,8 @@ class Database:
 					mark.pos2 += INFO_MARK_OFFSET2
 				mark.rotation_angle = -mark.rotation_angle
 				# In version 251 and below, moving north would decrement the y coordinate.
-				mark.pos1.y = -mark.pos1.y
-				mark.pos2.y = -mark.pos2.y
+				mark.pos1.y *= -1
+				mark.pos2.y *= -1
 			if mark.type != "text" and mark.text:
 				mark.text = ""
 			elif mark.type == "text" and not mark.text:
@@ -255,21 +249,21 @@ class Database:
 			qstream.write_string(room.contents)
 			qstream.write_uint32(vnum)
 			qstream.write_string(room.note)
-			qstream.write_uint8(TERRAIN_TYPE_TO_BITS[room.terrain])
-			qstream.write_uint8(LIGHT_TYPE_TO_BITS[room.light])
-			qstream.write_uint8(ALIGNMENT_TYPE_TO_BITS[room.alignment])
-			qstream.write_uint8(PORTABLE_TYPE_TO_BITS[room.portable])
-			qstream.write_uint8(RIDABLE_TYPE_TO_BITS[room.ridable])
-			qstream.write_uint8(SUN_DEATH_TYPE_TO_BITS[room.sundeath])
-			qstream.write_uint32(MOB_FLAGS.flags_to_bits(room.mob_flags))
-			qstream.write_uint32(LOAD_FLAGS.flags_to_bits(room.load_flags))
+			qstream.write_uint8(room.terrain.value)
+			qstream.write_uint8(room.light.value)
+			qstream.write_uint8(room.alignment.value)
+			qstream.write_uint8(room.portable.value)
+			qstream.write_uint8(room.ridable.value)
+			qstream.write_uint8(room.sundeath.value)
+			qstream.write_uint32(room.mob_flags.value)
+			qstream.write_uint32(room.load_flags.value)
 			qstream.write_uint8(int(room.updated))
 			for coord in room.coordinates:
 				qstream.write_int32(coord)
 			for direction in DIRECTIONS:
 				ext: Exit = room._exits[direction]  # NOQA: SLF001
-				qstream.write_uint16(EXIT_FLAGS.flags_to_bits(ext.exit_flags))
-				qstream.write_uint16(DOOR_FLAGS.flags_to_bits(ext.door_flags))
+				qstream.write_uint16(ext.exit_flags.value)
+				qstream.write_uint16(ext.door_flags.value)
 				qstream.write_string(ext.door_name)
 				for connection in ext.inbound_connections:
 					qstream.write_uint32(connection)

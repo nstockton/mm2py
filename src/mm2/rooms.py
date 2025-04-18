@@ -35,140 +35,146 @@ from __future__ import annotations
 # Built-in Modules:
 from collections import OrderedDict
 from collections.abc import Mapping
+from enum import Enum, Flag, auto
 from typing import Union
 
 # Local Modules:
-from . import NamedBitFlags
 from .coordinates import Coordinates
 
 
-MOB_FLAGS: NamedBitFlags = NamedBitFlags(
-	[
-		"rent",
-		"shop",
-		"weapon_shop",
-		"armour_shop",
-		"food_shop",
-		"pet_shop",
-		"guild",
-		"scout_guild",
-		"mage_guild",
-		"cleric_guild",
-		"warrior_guild",
-		"ranger_guild",
-		"aggressive_mob",
-		"quest_mob",
-		"passive_mob",
-		"elite_mob",
-		"super_mob",
-		"milkable",
-		"rattlesnake",
-	]
-)
+class MobFlags(Flag):
+	RENT = auto()
+	SHOP = auto()
+	WEAPON_SHOP = auto()
+	ARMOUR_SHOP = auto()
+	FOOD_SHOP = auto()
+	PET_SHOP = auto()
+	GUILD = auto()
+	SCOUT_GUILD = auto()
+	MAGE_GUILD = auto()
+	CLERIC_GUILD = auto()
+	WARRIOR_GUILD = auto()
+	RANGER_GUILD = auto()
+	AGGRESSIVE_MOB = auto()
+	QUEST_MOB = auto()
+	PASSIVE_MOB = auto()
+	ELITE_MOB = auto()
+	SUPER_MOB = auto()
+	MILKABLE = auto()
+	RATTLESNAKE = auto()
 
-LOAD_FLAGS: NamedBitFlags = NamedBitFlags(
-	[
-		"treasure",
-		"armour",
-		"weapon",
-		"water",
-		"food",
-		"herb",
-		"key",
-		"mule",
-		"horse",
-		"pack_horse",
-		"trained_horse",
-		"rohirrim",
-		"warg",
-		"boat",
-		"attention",
-		"tower",  # Player can 'watch' surrounding rooms from this one.
-		"clock",
-		"mail",
-		"stable",
-		"white_word",
-		"dark_word",
-		"equipment",
-		"coach",
-		"ferry",
-	]
-)
 
-EXIT_FLAGS: NamedBitFlags = NamedBitFlags(
-	[
-		"exit",
-		"door",
-		"road",
-		"climb",
-		"random",
-		"special",
-		"no_match",  # Exit not always visible, ignore it when syncing against available exits.
-		"flow",  # Water flow.
-		"no_flee",
-		"damage",
-		"fall",
-		"guarded",  # Mobs prevent movement.
-	]
-)
+class LoadFlags(Flag):
+	TREASURE = auto()
+	ARMOUR = auto()
+	WEAPON = auto()
+	WATER = auto()
+	FOOD = auto()
+	HERB = auto()
+	KEY = auto()
+	MULE = auto()
+	HORSE = auto()
+	PACK_HORSE = auto()
+	TRAINED_HORSE = auto()
+	ROHIRRIM = auto()
+	WARG = auto()
+	BOAT = auto()
+	ATTENTION = auto()
+	TOWER = auto()  # Player can watch surrounding rooms from this one.
+	CLOCK = auto()
+	MAIL = auto()
+	STABLE = auto()
+	WHITE_WORD = auto()
+	DARK_WORD = auto()
+	EQUIPMENT = auto()
+	COACH = auto()
+	FERRY = auto()
 
-DOOR_FLAGS: NamedBitFlags = NamedBitFlags(
-	[
-		"hidden",
-		"need_key",
-		"no_block",
-		"no_break",
-		"no_pick",
-		"delayed",
-		"callable",
-		"knockable",
-		"magic",
-		"action",  # Action controlled
-		"no_bash",
-	]
-)
 
-ALIGNMENT_TYPE: dict[int, str] = {0: "undefined", 1: "good", 2: "neutral", 3: "evil"}
-ALIGNMENT_TYPE_TO_BITS: dict[str, int] = {v: k for k, v in ALIGNMENT_TYPE.items()}
+class ExitFlags(Flag):
+	EXIT = auto()
+	DOOR = auto()
+	ROAD = auto()
+	CLIMB = auto()
+	RANDOM = auto()
+	SPECIAL = auto()
+	NO_MATCH = auto()  # Exit not always visible, ignore it when syncing against available exits.
+	FLOW = auto()  # Water flow.
+	NO_FLEE = auto()
+	DAMAGE = auto()
+	FALL = auto()
+	GUARDED = auto()  # Mobs prevent movement.
 
-LIGHT_TYPE: dict[int, str] = {0: "undefined", 1: "dark", 2: "lit"}
-LIGHT_TYPE_TO_BITS: dict[str, int] = {v: k for k, v in LIGHT_TYPE.items()}
 
-PORTABLE_TYPE: dict[int, str] = {0: "undefined", 1: "portable", 2: "not_portable"}
-PORTABLE_TYPE_TO_BITS: dict[str, int] = {v: k for k, v in PORTABLE_TYPE.items()}
+class DoorFlags(Flag):
+	HIDDEN = auto()
+	NEED_KEY = auto()
+	NO_BLOCK = auto()
+	NO_BREAK = auto()
+	NO_PICK = auto()
+	DELAYED = auto()
+	CALLABLE = auto()
+	KNOCKABLE = auto()
+	MAGIC = auto()
+	ACTION = auto()  # Action controlled.
+	NO_BASH = auto()
 
-RIDABLE_TYPE: dict[int, str] = {0: "undefined", 1: "ridable", 2: "not_ridable"}
-RIDABLE_TYPE_TO_BITS: dict[str, int] = {v: k for k, v in RIDABLE_TYPE.items()}
 
-SUN_DEATH_TYPE: dict[int, str] = {0: "undefined", 1: "sundeath", 2: "no_sundeath"}
-SUN_DEATH_TYPE_TO_BITS: dict[str, int] = {v: k for k, v in SUN_DEATH_TYPE.items()}
+class Alignment(Enum):
+	UNDEFINED = 0
+	GOOD = auto()
+	NEUTRAL = auto()
+	EVIL = auto()
 
-TERRAIN_TYPE: dict[int, str] = {
-	0: "undefined",
-	1: "building",  # Note that MMapper still calls this "indoors".
-	2: "city",
-	3: "field",
-	4: "forest",
-	5: "hills",
-	6: "mountains",
-	7: "shallows",  # Note that MMapper still calls this "shallow".
-	8: "water",
-	9: "rapids",
-	10: "underwater",
-	11: "road",
-	12: "brush",
-	13: "tunnel",
-	14: "cavern",
-	15: "deathtrap",
-}
-TERRAIN_TYPE_TO_BITS: dict[str, int] = {v: k for k, v in TERRAIN_TYPE.items()}
+
+class Light(Enum):
+	UNDEFINED = 0
+	DARK = auto()
+	LIT = auto()
+
+
+class Portable(Enum):
+	UNDEFINED = 0
+	PORTABLE = auto()
+	NOT_PORTABLE = auto()
+
+
+class Ridable(Enum):
+	UNDEFINED = 0
+	RIDABLE = auto()
+	NOT_RIDABLE = auto()
+
+
+class Sundeath(Enum):
+	UNDEFINED = 0
+	SUNDEATH = auto()
+	NO_SUNDEATH = auto()
+
+
+class Terrain(Enum):
+	UNDEFINED = 0
+	BUILDING = auto()  # Note that MMapper still calls this "indoors".
+	CITY = auto()
+	FIELD = auto()
+	FOREST = auto()
+	HILLS = auto()
+	MOUNTAINS = auto()
+	SHALLOWS = auto()  # Note that MMapper still calls this "shallow".
+	WATER = auto()
+	RAPIDS = auto()
+	UNDERWATER = auto()
+	ROAD = auto()
+	BRUSH = auto()
+	TUNNEL = auto()
+	CAVERN = auto()
+	DEATHTRAP = auto()
 
 
 class Exit:
 	def __init__(self, parent: Room) -> None:
 		self._parent: Room = parent
-		self.exit_flags: set[str] = set()
-		self.door_flags: set[str] = set()
+		self.exit_flags: ExitFlags = ExitFlags(0)
+		self.door_flags: DoorFlags = DoorFlags(0)
 		self.door_name: str = ""
 		self.inbound_connections: list[int] = []
 		self.outbound_connections: list[int] = []
@@ -185,14 +191,14 @@ class Room:
 		self.description: str = ""
 		self.contents: str = ""
 		self.note: str = ""
-		self.terrain: str = TERRAIN_TYPE[0]
-		self.light: str = LIGHT_TYPE[0]
-		self.alignment: str = ALIGNMENT_TYPE[0]
-		self.portable: str = PORTABLE_TYPE[0]
-		self.ridable: str = RIDABLE_TYPE[0]
-		self.sundeath: str = SUN_DEATH_TYPE[0]
-		self.mob_flags: set[str] = set()
-		self.load_flags: set[str] = set()
+		self.terrain: Terrain = Terrain(0)
+		self.light: Light = Light(0)
+		self.alignment: Alignment = Alignment(0)
+		self.portable: Portable = Portable(0)
+		self.ridable: Ridable = Ridable(0)
+		self.sundeath: Sundeath = Sundeath(0)
+		self.mob_flags: MobFlags = MobFlags(0)
+		self.load_flags: LoadFlags = LoadFlags(0)
 		self.updated: bool = False
 		self.coordinates: Coordinates = Coordinates()
 		self._exits: dict[str, Exit] = OrderedDict()
@@ -234,8 +240,4 @@ class Room:
 
 	@property
 	def exits(self) -> dict[str, Exit]:
-		return {
-			direction: self._exits[direction]
-			for direction in self._exits
-			if self._exits and self._exits[direction].exit_flags
-		}
+		return {direction: ext for direction, ext in self._exits.items() if ext.exit_flags}
