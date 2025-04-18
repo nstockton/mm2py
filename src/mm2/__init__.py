@@ -32,6 +32,8 @@ from __future__ import annotations
 
 # Built-in Modules:
 from collections.abc import Iterable
+from contextlib import suppress
+from typing import TYPE_CHECKING
 
 
 class NamedBitFlags:
@@ -54,9 +56,13 @@ class MMapperError(Exception):
 
 
 __version__: str = "0.0.0"
+if not TYPE_CHECKING:
+	with suppress(ImportError):
+		from ._version import __version__
 
 
 __all__: list[str] = [
 	"MMapperError",
 	"NamedBitFlags",
+	"__version__",
 ]
