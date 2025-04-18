@@ -34,15 +34,11 @@ from __future__ import annotations
 
 # Built-in Modules:
 import operator
-import sys
 from collections.abc import Callable, Iterator, Sequence
 from typing import Union, overload
 
-
-if sys.version_info >= (3, 11):
-	from typing import Self
-else:
-	from typing_extensions import Self
+# Local Modules:
+from .typedef import Self
 
 
 class Coordinates(Sequence[int]):  # NOQA: PLR0904
@@ -68,7 +64,7 @@ class Coordinates(Sequence[int]):  # NOQA: PLR0904
 		pass
 
 	@overload
-	def __getitem__(self, i: slice) -> Sequence[int]:
+	def __getitem__(self, i: slice[int, int, int]) -> Sequence[int]:
 		pass
 
 	def __getitem__(self, i: Union[int, slice]) -> Union[int, Sequence[int]]:

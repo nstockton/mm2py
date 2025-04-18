@@ -1,25 +1,30 @@
 [build-system]
-	requires = [
-		"poetry-core>=1.0.0",
-		"poetry-dynamic-versioning==1.4.0",
-	]
-	build-backend = "poetry_dynamic_versioning.backend"
+	requires = ["pdm-backend"]
+	build-backend = "pdm.backend"
 
-[tool.poetry]
+[project]
 	name = "mm2py"
-	version = "0.0.0"
-	description = "A Python library for reading and modifying MMapper databases."
 	authors = [
-		"Nick Stockton <nstockton@users.noreply.github.com>",
-		"Chris Brannon <CMB@users.noreply.github.com>",
+		{name = "Nick Stockton", email = "nstockton@users.noreply.github.com"},
+		{name = "Chris Brannon", email = "CMB@users.noreply.github.com"},
 	]
-	license = "Unlicense"
+	description = "A Python library for reading and modifying MMapper databases."
+	license = {text = "Unlicense"}
 	readme = "README.md"
-	homepage = "https://github.com/nstockton/mm2py"
-	repository = "https://github.com/nstockton/mm2py"
-	keywords = ["mmapper", "mm2", "database", "mud", "mume"]
+	requires-python = ">=3.9,<4.0"
+	dependencies = [
+		"typing-extensions>=4.8,<5.0; python_version < \"3.11\"",
+	]
+	dynamic = ["version"]
+	keywords = [
+		"mmapper",
+		"mm2",
+		"database",
+		"mud",
+		"mume",
+	]
 	classifiers = [
-		"Development Status :: 4 - Beta",
+		"Development Status :: 5 - Production/Stable",
 		"Intended Audience :: Developers",
 		"License :: OSI Approved :: The Unlicense (Unlicense)",
 		"Programming Language :: Python",
@@ -41,45 +46,50 @@
 		"Operating System :: POSIX :: BSD",
 		"Operating System :: POSIX :: Linux",
 		"Operating System :: Unix",
+		"Topic :: Software Development",
 		"Topic :: Software Development :: Libraries",
+		"Topic :: Software Development :: Libraries :: Python Modules",
 	]
-	packages = [
-		{include = "mm2", from = "src"},
+
+[project.urls]
+	homepage = "https://github.com/nstockton/mm2py"
+	repository = "https://github.com/nstockton/mm2py"
+
+[dependency-groups]
+	dev = [
+		"pre-commit>=3.5,<4.0",
 	]
-	include = [
-		{path = "tests/*", format = "sdist"},
-		{path = "poetry.lock", format = "sdist"},
+	lint = [
+		"isort>=5.13,<6.0",
+		"mypy>=1.14,<2.0",
+		"ruff>=0.9,<1.0",
 	]
-	exclude = []
-
-[tool.poetry.dependencies]
-	python = "^3.9"
-	typing-extensions = {version = "^4.8", python = ">= 3.11"}
-
-[tool.poetry.dev-dependencies]
-	poetry-dynamic-versioning = {version = "1.4.0", extras = ["plugin"]}
-	pre-commit = "^3.5"
-
-[tool.poetry.group.lint.dependencies]
-	isort = "^5.13"
-	mypy = "^1.8"
-	ruff = "^0.6"
-
-[tool.poetry.group.test.dependencies]
-	coverage = {version = "^7.4", extras = ["toml"]}
-
-[tool.poetry-dynamic-versioning]
-	enable = true
-	vcs = "git"
-	format-jinja = "{% if distance == 0 %}{{ base }}{% else %}{{ base }}+{{ distance }}.g{{ commit|truncate(7,true,'') }}{% endif %}"
-
-[tool.poetry-dynamic-versioning.substitution]
-	files = [
-		"src/*.py", "src/*/__init__.py", "src/*/__version__.py", "src/*/_version.py",
+	test = [
+		"coverage[toml]>=7.6,<8.0",
 	]
-	patterns = [
-		"(^__version__(?:\\s*[:]\\s*str)?\\s*=\\s*['\"])[^'\"]*(['\"])",
+
+[tool.pdm.build]
+	package-dir = "src"
+	includes = [
+		"src/mm2",
 	]
+	excludes = []
+	source-includes = [
+		"tests",
+		"uv.lock",
+	]
+
+[tool.pdm.version]
+	fallback_version = "0.0.0"
+	source = "scm"
+	tag_filter = "[vV][0-9]*"
+	tag_regex = '^(?:[vV])(?P<version>\d+\.\d+\.\d+)(?:.*)$'
+	write_to = "mm2/_version.py"
+	write_template = "__version__: str = \"{}\"\r\n"
+
+[tool.uv]
+	default-groups = ["dev", "lint", "test"]
+	upgrade-package = ["mm2py"]
 
 [tool.ruff]
 	extend-include = [
@@ -112,19 +122,15 @@
 		"EM",  # Flake8-errmsg.
 		"G",  # Flake8-logging-format.
 		"I",  # ISort. (We use ISort package for this)
-		"ISC001",  # Implicitly concatenated string literals on one line. (Conflicts with formatter)
 		"PT",  # Flake8-pytest-style.
 		"T20",  # Flake8-print.
 		"TCH",  # Flake8-type-checking.
 		"TRY003",  # Avoid specifying long messages outside the exception class.
-		"UP007",  # Use X | Y for type annotations. (I hate this syntax)
+		"UP007",  # Use X | Y for union type annotations. (I hate this syntax)
+		"UP045",  # Use X | Y for optional type annotations. (I hate this syntax)
 		"W191",  # Indentation contains tabs.
 	]
-	typing-modules = [
-		"cah.typedef",
-		"knickknacks.typedef",
-		"mudproto.typedef",
-	]
+	typing-modules = ["mm2.typedef"]
 	unfixable = []
 
 [tool.ruff.lint.flake8-builtins]
@@ -143,7 +149,7 @@
 
 [tool.ruff.lint.per-file-ignores]
 	"**/__init__.py" = ["D1"]
-	"**/__main__.py" = ["D1"]
+	"**/_version.py" = ["CPY001"]
 	"./tests/**" = ["D1", "PLR6301"]
 	"**/typedef.py" = ["F401"]
 
@@ -172,7 +178,9 @@
 
 [tool.coverage.run]
 	source = ["mm2"]
-	omit = []
+	omit = [
+		"src/mm2/typedef.py",
+	]
 
 [tool.isort]
 	line_length = 110  # The max length of an import line (used for wrapping long imports).

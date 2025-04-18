@@ -141,7 +141,7 @@ class Database:
 				qstream.read_uint32()  # We don't need the header.
 			block_size: int = 8192
 			decompressor: Any = zlib.decompressobj()
-			for data in iter(partial(compressed_stream.read, block_size), b""):
+			for data in iter(partial(compressed_stream.read, block_size), b""):  # NOQA: FURB122
 				decompressed_stream.write(decompressor.decompress(data))
 			del qstream
 		decompressed_stream.seek(0)
@@ -295,7 +295,7 @@ class Database:
 			uncompressed_stream.seek(0)
 			block_size: int = 8192
 			compressor: Any = zlib.compressobj()
-			for data in iter(partial(uncompressed_stream.read, block_size), b""):
+			for data in iter(partial(uncompressed_stream.read, block_size), b""):  # NOQA: FURB122
 				output_stream.write(compressor.compress(data))
 			output_stream.write(compressor.flush())
 			del qstream
