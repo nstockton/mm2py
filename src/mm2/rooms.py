@@ -168,6 +168,7 @@ class Terrain(Enum):
 	TUNNEL = auto()
 	CAVERN = auto()
 	DEATHTRAP = auto()
+	RANDOM = auto()
 
 
 class Exit:
