@@ -37,6 +37,7 @@ import io
 import zlib
 from collections import OrderedDict
 from decimal import ROUND_HALF_UP, Decimal
+from enum import IntEnum
 from functools import partial
 from pathlib import Path
 from typing import Any, BinaryIO, Optional
@@ -74,17 +75,22 @@ from .rooms import (
 
 
 MMAPPER_MAGIC: int = 0xFFB2AF01
-MMAPPER_VERSIONS: dict[int, int] = {
-	17: 200,  # MMapper 2.00 schema. (Initial supported version)
-	24: 202,  # MMapper 2.02 schema. (Ridable flag)
-	25: 204,  # MMapper 2.04 schema. (ZLib compression)
-	32: 237,  # MMapper 2.37 schema. (16bit door flags, NoMatch)
-	33: 240,  # MMapper 2.40 schema. (16bit exit flags, 32bit mob flags and load flags)
-	34: 243,  # MMapper 2.43 schema. (qCompress, SunDeath flag)
-	35: 251,  # MMapper 2.51 schema. (discard all previous no_match flags)
-	36: 260,  # (switches to new coordinate system)
-}
 DIRECTIONS: tuple[str, ...] = ("north", "south", "east", "west", "up", "down", "unknown")
+
+
+class MMapperVersion(IntEnum):
+	V2_0_0_INITIAL = 17  # Initial schema (Apr 2006).
+	V2_0_2_RIDABLE = 24  # Ridable flag (Oct 2006).
+	V2_0_4_ZLIB = 25  # Zlib compression (Jun 2009).
+	V2_3_7_DOOR_FLAGS_NO_MATCH = 32  # 16bit door flags, NoMatch (Dec 2016).
+	V2_4_0_SUNDEATH_LARGER_FLAGS = 33  # SUNDEATH Flag, 16bit exit flags, 32bit mob and load flags (Dec 2017).
+	V2_4_3_QCOMPRESS = 34  # qCompress (Jan 2018).
+	V2_5_1_DISCARD_NO_MATCH = 35  # Discard all previous no_match flags (Aug 2018).
+	# Starting in 2019, versions are date based, VYY_MM_REV.
+	V19_10_0_NEW_COORDS = 36  # Switch to new coordinate system.
+	V25_02_0_NO_INBOUND_LINKS = 38  # Stops loading and saving inbound links.
+	V25_02_1_REMOVE_UP_TO_DATE = 39  # Removes upToDate.
+	V25_02_2_SERVER_ID = 40  # adds server_id.
 
 
 def lround(value: float) -> int:
@@ -116,11 +122,12 @@ class Database:
 			magic: int = qstream.read_uint32()
 			if magic != MMAPPER_MAGIC:
 				raise BadMagicNumberError
-			version: int = qstream.read_int32()
-			if version not in MMAPPER_VERSIONS:
-				raise UnsupportedVersionError(version)
-			version = MMAPPER_VERSIONS[version]
-			if version >= 243:  # NOQA: PLR2004
+			version_number: int = qstream.read_int32()
+			try:
+				version: MMapperVersion = MMapperVersion(version_number)
+			except ValueError:
+				raise UnsupportedVersionError(version_number) from None
+			if version >= MMapperVersion.V2_4_3_QCOMPRESS:
 				# As of MMapper V2.43, MMapper uses qCompress and qUncompress
 				# from the QByteArray class for data compression.
 				# From the web page at
@@ -143,7 +150,7 @@ class Database:
 		total_rooms: int = qstream.read_uint32()
 		total_marks: int = qstream.read_uint32()
 		self.selected += (qstream.read_int32(), qstream.read_int32(), qstream.read_int32())  # (x, y, z)
-		if version <= 251:  # NOQA: PLR2004
+		if version < MMapperVersion.V19_10_0_NEW_COORDS:
 			# In version 251 and below, moving north would decrement the y coordinate.
 			self.selected.y *= -1
 		for _ in range(total_rooms):
@@ -157,9 +164,9 @@ class Database:
 			room.light = Light(qstream.read_uint8())
 			room.alignment = Alignment(qstream.read_uint8())
 			room.portable = Portable(qstream.read_uint8())
-			if version >= 202:  # NOQA: PLR2004
+			if version >= MMapperVersion.V2_0_2_RIDABLE:
 				room.ridable = Ridable(qstream.read_uint8())
-			if version >= 240:  # NOQA: PLR2004
+			if version >= MMapperVersion.V2_4_0_SUNDEATH_LARGER_FLAGS:
 				room.sundeath = Sundeath(qstream.read_uint8())
 				room.mob_flags |= MobFlags(qstream.read_uint32())
 				room.load_flags |= LoadFlags(qstream.read_uint32())
@@ -168,12 +175,12 @@ class Database:
 				room.load_flags |= LoadFlags(qstream.read_uint16())
 			room.updated = bool(qstream.read_uint8())
 			room.coordinates += (qstream.read_int32(), qstream.read_int32(), qstream.read_int32())
-			if version <= 251:  # NOQA: PLR2004
+			if version < MMapperVersion.V19_10_0_NEW_COORDS:
 				# In version 251 and below, moving north would decrement the y coordinate.
 				room.y *= -1
 			for direction in DIRECTIONS:
 				ext: Exit = Exit(parent=room)  # 'exit' is a built in function in Python. Use 'ext' instead.
-				if version >= 240:  # NOQA: PLR2004
+				if version >= MMapperVersion.V2_4_0_SUNDEATH_LARGER_FLAGS:
 					ext.exit_flags |= ExitFlags(qstream.read_uint16())
 				else:
 					ext.exit_flags |= ExitFlags(qstream.read_uint8())
@@ -181,9 +188,12 @@ class Database:
 						ext.exit_flags |= ExitFlags.EXIT
 				# Exits saved after MMapper V2.04 were offset by 1 bit
 				# causing corruption and excessive NO_MATCH exits.
-				if 204 <= version <= 250 and ExitFlags.NO_MATCH in ext.exit_flags:  # NOQA: PLR2004
+				if (
+					MMapperVersion.V2_0_4_ZLIB <= version <= MMapperVersion.V2_4_3_QCOMPRESS
+					and ExitFlags.NO_MATCH in ext.exit_flags
+				):
 					ext.exit_flags &= ~ExitFlags.NO_MATCH  # Clear NO_MATCH flag.
-				if version >= 237:  # NOQA: PLR2004
+				if version >= MMapperVersion.V2_3_7_DOOR_FLAGS_NO_MATCH:
 					ext.door_flags |= DoorFlags(qstream.read_uint16())
 				else:
 					ext.door_flags |= DoorFlags(qstream.read_uint8())
@@ -196,22 +206,22 @@ class Database:
 			self.rooms[vnum] = room
 		for _ in range(total_marks):
 			mark: InfoMark = InfoMark()
-			if version <= 251:  # NOQA: PLR2004
+			if version < MMapperVersion.V19_10_0_NEW_COORDS:
 				qstream.read_string()  # Mark name (ignored).
 			mark.text = qstream.read_string()
-			if version <= 251:  # NOQA: PLR2004
+			if version < MMapperVersion.V19_10_0_NEW_COORDS:
 				qstream.read_uint32()  # Julian day (ignored).
 				qstream.read_uint32()  # Milliseconds since midnight (ignored).
 				qstream.read_uint8()  # Time zone (0 = local time, 1 = UTC) (ignored).
 			mark.type = INFO_MARK_TYPE.get(qstream.read_uint8(), INFO_MARK_TYPE[0])
-			if version >= 237:  # NOQA: PLR2004
+			if version >= MMapperVersion.V2_3_7_DOOR_FLAGS_NO_MATCH:
 				mark.cls = INFO_MARK_CLASS.get(qstream.read_uint8(), INFO_MARK_CLASS[0])
 				mark.rotation_angle = qstream.read_int32()
-				if version < 260:  # NOQA: PLR2004
+				if version < MMapperVersion.V19_10_0_NEW_COORDS:
 					mark.rotation_angle //= INFO_MARK_SCALE
 			mark.pos1 += (qstream.read_int32(), qstream.read_int32(), qstream.read_int32())
 			mark.pos2 += (qstream.read_int32(), qstream.read_int32(), qstream.read_int32())
-			if version <= 251:  # NOQA: PLR2004
+			if version < MMapperVersion.V19_10_0_NEW_COORDS:
 				mark.pos1 += INFO_MARK_HALF_ROOM_OFFSET
 				mark.pos2 += INFO_MARK_HALF_ROOM_OFFSET
 				if mark.type == "text":
@@ -284,7 +294,7 @@ class Database:
 		with Path(file_name).open("wb") as output_stream:
 			qstream = QFile(output_stream)
 			qstream.write_uint32(MMAPPER_MAGIC)
-			qstream.write_int32(max(MMAPPER_VERSIONS))
+			qstream.write_int32(max(MMapperVersion).value)
 			qstream.write_uint32(uncompressed_stream.tell())
 			uncompressed_stream.seek(0)
 			block_size: int = 8192
