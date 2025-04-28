@@ -91,6 +91,7 @@ class MMapperVersion(IntEnum):
 	V25_02_0_NO_INBOUND_LINKS = 38  # Stops loading and saving inbound links.
 	V25_02_1_REMOVE_UP_TO_DATE = 39  # Removes upToDate.
 	V25_02_2_SERVER_ID = 40  # adds server_id.
+	V25_02_3_DEATH_FLAG = 41  # Replaces death terrain with room flag.
 
 
 def lround(value: float) -> int:
@@ -159,8 +160,20 @@ class Database:
 			room.description = qstream.read_string()
 			room.contents = qstream.read_string()
 			vnum: int = qstream.read_uint32()
+			if version >= MMapperVersion.V25_02_2_SERVER_ID:
+				room.server_id = qstream.read_uint32()
 			room.note = qstream.read_string()
-			room.terrain = Terrain(qstream.read_uint8())
+			terrain = qstream.read_uint8()
+			add_death_load_flag = False
+			death_terrain = 15
+			random_terrain = 16
+			if version < MMapperVersion.V25_02_3_DEATH_FLAG and terrain == death_terrain:
+				room.terrain = Terrain.BUILDING
+				add_death_load_flag = True
+			elif version < MMapperVersion.V19_10_0_NEW_COORDS and terrain == random_terrain:
+				room.terrain = Terrain.UNDEFINED
+			else:
+				room.terrain = Terrain(terrain)
 			room.light = Light(qstream.read_uint8())
 			room.alignment = Alignment(qstream.read_uint8())
 			room.portable = Portable(qstream.read_uint8())
@@ -173,7 +186,10 @@ class Database:
 			else:
 				room.mob_flags |= MobFlags(qstream.read_uint16())
 				room.load_flags |= LoadFlags(qstream.read_uint16())
-			room.updated = bool(qstream.read_uint8())
+			if add_death_load_flag:
+				room.load_flags |= LoadFlags.DEATHTRAP
+			if version < MMapperVersion.V25_02_1_REMOVE_UP_TO_DATE:
+				qstream.read_uint8()
 			room.coordinates += (qstream.read_int32(), qstream.read_int32(), qstream.read_int32())
 			if version < MMapperVersion.V19_10_0_NEW_COORDS:
 				# In version 251 and below, moving north would decrement the y coordinate.
@@ -198,8 +214,9 @@ class Database:
 				else:
 					ext.door_flags |= DoorFlags(qstream.read_uint8())
 				ext.door_name = qstream.read_string()
-				for connection in iter(qstream.read_uint32, UINT32_MAX):
-					ext.inbound_connections.append(connection)
+				if version < MMapperVersion.V25_02_0_NO_INBOUND_LINKS:
+					for _ in iter(qstream.read_uint32, UINT32_MAX):
+						continue
 				for connection in iter(qstream.read_uint32, UINT32_MAX):
 					ext.outbound_connections.append(connection)
 				room._exits[direction] = ext  # NOQA: SLF001
@@ -258,6 +275,7 @@ class Database:
 			qstream.write_string(room.description)
 			qstream.write_string(room.contents)
 			qstream.write_uint32(vnum)
+			qstream.write_uint32(room.server_id)
 			qstream.write_string(room.note)
 			qstream.write_uint8(room.terrain.value)
 			qstream.write_uint8(room.light.value)
@@ -267,7 +285,6 @@ class Database:
 			qstream.write_uint8(room.sundeath.value)
 			qstream.write_uint32(room.mob_flags.value)
 			qstream.write_uint32(room.load_flags.value)
-			qstream.write_uint8(int(room.updated))
 			for coord in room.coordinates:
 				qstream.write_int32(coord)
 			for direction in DIRECTIONS:
@@ -275,9 +292,6 @@ class Database:
 				qstream.write_uint16(ext.exit_flags.value)
 				qstream.write_uint16(ext.door_flags.value)
 				qstream.write_string(ext.door_name)
-				for connection in ext.inbound_connections:
-					qstream.write_uint32(connection)
-				qstream.write_uint32(UINT32_MAX)
 				for connection in ext.outbound_connections:
 					qstream.write_uint32(connection)
 				qstream.write_uint32(UINT32_MAX)

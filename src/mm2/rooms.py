@@ -89,6 +89,7 @@ class LoadFlags(Flag):
 	EQUIPMENT = auto()
 	COACH = auto()
 	FERRY = auto()
+	DEATHTRAP = auto()
 
 
 class ExitFlags(Flag):
@@ -167,8 +168,6 @@ class Terrain(Enum):
 	BRUSH = auto()
 	TUNNEL = auto()
 	CAVERN = auto()
-	DEATHTRAP = auto()
-	RANDOM = auto()
 
 
 class Exit:
@@ -177,7 +176,6 @@ class Exit:
 		self.exit_flags: ExitFlags = ExitFlags(0)
 		self.door_flags: DoorFlags = DoorFlags(0)
 		self.door_name: str = ""
-		self.inbound_connections: list[int] = []
 		self.outbound_connections: list[int] = []
 
 	@property
@@ -191,6 +189,7 @@ class Room:
 		self.name: str = ""
 		self.description: str = ""
 		self.contents: str = ""
+		self.server_id: int = 0
 		self.note: str = ""
 		self.terrain: Terrain = Terrain(0)
 		self.light: Light = Light(0)
@@ -200,7 +199,6 @@ class Room:
 		self.sundeath: Sundeath = Sundeath(0)
 		self.mob_flags: MobFlags = MobFlags(0)
 		self.load_flags: LoadFlags = LoadFlags(0)
-		self.updated: bool = False
 		self.coordinates: Coordinates = Coordinates()
 		self._exits: dict[str, Exit] = OrderedDict()
 
