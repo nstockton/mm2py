@@ -105,6 +105,7 @@ class ExitFlags(Flag):
 	DAMAGE = auto()
 	FALL = auto()
 	GUARDED = auto()  # Mobs prevent movement.
+	UNMAPPED = auto()
 
 
 class DoorFlags(Flag):
