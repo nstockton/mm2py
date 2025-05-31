@@ -187,6 +187,7 @@ class Exit:
 class Room:
 	def __init__(self, parent: Mapping[int, Room]) -> None:
 		self._parent: Mapping[int, Room] = parent
+		self.area: str = ""
 		self.name: str = ""
 		self.description: str = ""
 		self.contents: str = ""

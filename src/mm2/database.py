@@ -92,6 +92,7 @@ class MMapperVersion(IntEnum):
 	V25_02_1_REMOVE_UP_TO_DATE = 39  # Removes upToDate.
 	V25_02_2_SERVER_ID = 40  # adds server_id.
 	V25_02_3_DEATH_FLAG = 41  # Replaces death terrain with room flag.
+	V25_02_4_AREA = 42  # Adds area.
 
 
 def lround(value: float) -> int:
@@ -156,6 +157,8 @@ class Database:
 			self.selected.y *= -1
 		for _ in range(total_rooms):
 			room: Room = Room(parent=self.rooms)
+			if version >= MMapperVersion.V25_02_4_AREA:
+				room.area = qstream.read_string()
 			room.name = qstream.read_string()
 			room.description = qstream.read_string()
 			room.contents = qstream.read_string()
@@ -271,6 +274,7 @@ class Database:
 		for coord in self.selected:
 			qstream.write_int32(coord)
 		for vnum, room in self.rooms.items():
+			qstream.write_string(room.area)
 			qstream.write_string(room.name)
 			qstream.write_string(room.description)
 			qstream.write_string(room.contents)
