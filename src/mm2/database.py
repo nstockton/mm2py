@@ -88,11 +88,11 @@ class MMapperVersion(IntEnum):
 	V2_5_1_DISCARD_NO_MATCH = 35  # Discard all previous no_match flags (Aug 2018).
 	# Starting in 2019, versions are date based, VYY_MM_REV.
 	V19_10_0_NEW_COORDS = 36  # Switch to new coordinate system.
-	V25_02_0_NO_INBOUND_LINKS = 38  # Stops loading and saving inbound links.
-	V25_02_1_REMOVE_UP_TO_DATE = 39  # Removes upToDate.
-	V25_02_2_SERVER_ID = 40  # adds server_id.
-	V25_02_3_DEATH_FLAG = 41  # Replaces death terrain with room flag.
-	V25_02_4_AREA = 42  # Adds area.
+	V25_04_0_NO_INBOUND_LINKS = 38  # Stops loading and saving inbound links.
+	V25_04_1_REMOVE_UP_TO_DATE = 39  # Removes upToDate.
+	V25_04_2_SERVER_ID = 40  # adds server_id.
+	V25_04_3_DEATH_FLAG = 41  # Replaces death terrain with room flag.
+	V25_05_0_AREA = 42  # Adds area.
 
 
 def lround(value: float) -> int:
@@ -157,20 +157,20 @@ class Database:
 			self.selected.y *= -1
 		for _ in range(total_rooms):
 			room: Room = Room(parent=self.rooms)
-			if version >= MMapperVersion.V25_02_4_AREA:
+			if version >= MMapperVersion.V25_05_0_AREA:
 				room.area = qstream.read_string()
 			room.name = qstream.read_string()
 			room.description = qstream.read_string()
 			room.contents = qstream.read_string()
 			vnum: int = qstream.read_uint32()
-			if version >= MMapperVersion.V25_02_2_SERVER_ID:
+			if version >= MMapperVersion.V25_04_2_SERVER_ID:
 				room.server_id = qstream.read_uint32()
 			room.note = qstream.read_string()
 			terrain = qstream.read_uint8()
 			add_death_load_flag = False
 			death_terrain = 15
 			random_terrain = 16
-			if version < MMapperVersion.V25_02_3_DEATH_FLAG and terrain == death_terrain:
+			if version < MMapperVersion.V25_04_3_DEATH_FLAG and terrain == death_terrain:
 				room.terrain = Terrain.BUILDING
 				add_death_load_flag = True
 			elif version < MMapperVersion.V19_10_0_NEW_COORDS and terrain == random_terrain:
@@ -191,7 +191,7 @@ class Database:
 				room.load_flags |= LoadFlags(qstream.read_uint16())
 			if add_death_load_flag:
 				room.load_flags |= LoadFlags.DEATHTRAP
-			if version < MMapperVersion.V25_02_1_REMOVE_UP_TO_DATE:
+			if version < MMapperVersion.V25_04_1_REMOVE_UP_TO_DATE:
 				qstream.read_uint8()
 			room.coordinates += (qstream.read_int32(), qstream.read_int32(), qstream.read_int32())
 			if version < MMapperVersion.V19_10_0_NEW_COORDS:
@@ -217,7 +217,7 @@ class Database:
 				else:
 					ext.door_flags |= DoorFlags(qstream.read_uint8())
 				ext.door_name = qstream.read_string()
-				if version < MMapperVersion.V25_02_0_NO_INBOUND_LINKS:
+				if version < MMapperVersion.V25_04_0_NO_INBOUND_LINKS:
 					for _ in iter(qstream.read_uint32, UINT32_MAX):
 						continue
 				for connection in iter(qstream.read_uint32, UINT32_MAX):
